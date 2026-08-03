@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #090e1a;
+  --bg-surface: #0f172a;
+  --bg-card: #1e293b;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border-color: #1e293b;
+}
+
+html.light {
+  --bg-primary: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-card: #f1f5f9;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased transition-colors duration-200;
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+  }
+  html.light .bg-surface-950 { background-color: #f8fafc !important; }
+  html.light .bg-surface-900 { background-color: #ffffff !important; }
+  html.light .bg-surface-850 { background-color: #f1f5f9 !important; }
+  html.light .bg-surface-800 { background-color: #e2e8f0 !important; }
+  html.light .border-surface-800 { border-color: #e2e8f0 !important; }
+  html.light .border-surface-700 { border-color: #cbd5e1 !important; }
+  html.light .text-white { color: #0f172a !important; }
+  html.light .text-slate-200 { color: #1e293b !important; }
+  html.light .text-slate-300 { color: #334155 !important; }
+  html.light .text-slate-400 { color: #64748b !important; }
+  html.light .text-slate-500 { color: #64748b !important; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-surface); }
+  ::-webkit-scrollbar-thumb { background: #4f53ea; border-radius: 9999px; }
+}
+
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 inline-flex items-center justify-center;
+    background-color: #4f53ea;
+    color: #fff;
+  }
+  .btn-primary:hover { background-color: #6272f5; }
+  .btn-primary:active { transform: scale(0.95); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 inline-flex items-center justify-center;
+    background-color: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+  }
+  .btn-secondary:hover { opacity: 0.9; }
+  .btn-secondary:active { transform: scale(0.95); }
+
+  .btn-danger {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 inline-flex items-center justify-center;
+    background-color: #dc2626;
+    color: #fff;
+  }
+  .btn-danger:hover { background-color: #ef4444; }
+  .btn-danger:active { transform: scale(0.95); }
+
+  /* Card */
+  .card {
+    @apply rounded-xl p-4 transition-colors duration-200;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+  }
+
+  /* Form input */
+  .input {
+    @apply rounded-lg px-3 py-2 w-full text-sm transition-all duration-200;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+  }
+  .input::placeholder { color: var(--text-muted); }
+  .input:focus {
+    outline: none;
+    border-color: transparent;
+    box-shadow: 0 0 0 2px #6272f5;
+  }
+
+  /* Labels */
+  .label {
+    @apply block text-sm font-medium mb-1;
+    color: var(--text-muted);
+  }
+  .field-error {
+    @apply text-xs mt-1;
+    color: #f87171;
+  }
+
+  /* Nav items */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200;
+    color: var(--text-muted);
+  }
+  .nav-item:hover { color: var(--text-main); background-color: var(--bg-card); }
+
+  .nav-item-active {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium;
+    color: #4f53ea;
+    background-color: rgba(98, 114, 245, 0.15);
+    border: 1px solid rgba(98, 114, 245, 0.3);
+  }
+
+  /* Glass */
+  .glass {
+    @apply backdrop-blur-xl;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Section title */
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-widest px-3 mb-2;
+    color: var(--text-muted);
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent;
+  }
+  .scrollable {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4f53ea var(--bg-surface);
+  }
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(98, 114, 245, 0.25);
+  }
+  .shadow-glow-lg {
+    box-shadow: 0 0 40px rgba(98, 114, 245, 0.35);
+  }
+}
