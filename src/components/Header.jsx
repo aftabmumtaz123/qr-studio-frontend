@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 
 const Header = () => {
   const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('qr_theme') !== 'light';
+    return localStorage.getItem('qr_theme') !== 'dark';
   });
 
   useEffect(() => {
