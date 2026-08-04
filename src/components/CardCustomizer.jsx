@@ -56,9 +56,13 @@ const CardCustomizer = () => {
     setUploading(true);
 
     try {
-      const res = await axios.post('/api/media/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await axios.post(
+        "https://qr-studio-backend.vercel.app/api/media/upload",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
       if (res.data?.url) {
         updateCardStyle({ [targetField]: res.data.url });
         toast.success(`${targetField === 'avatar' ? 'Profile picture' : 'Logo'} uploaded!`);

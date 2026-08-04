@@ -50,9 +50,13 @@ const ImageForm = () => {
     const toastId = toast.loading('Uploading Image to Cloudinary...');
 
     try {
-      const res = await axios.post('/api/media/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await axios.post(
+        "https://qr-studio-backend.vercel.app/api/media/upload",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
 
       if (res.data?.url) {
         setValue('imageUrl', res.data.url);
