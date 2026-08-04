@@ -206,4 +206,6 @@ const QRSettings = () => {
   );
 };
 
+
+
 export default QRSettings;

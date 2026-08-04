@@ -17,7 +17,7 @@ import QRStyleAccordion from './QRStyleAccordion';
  * @param {function} children - React children (the form itself)
  */
 const FormWrapper = ({ title, icon, description, type, formData, dynamic = false, children }) => {
-  const { qrStyle, logo } = useQR();
+  const { qrStyle, logo, cardTemplate, cardStyle, cardData } = useQR();
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -25,15 +25,18 @@ const FormWrapper = ({ title, icon, description, type, formData, dynamic = false
     setSaving(true);
     try {
       await qrAPI.create({
-        title: formData.title || type,
+        title: formData.title || `${type} QR Code`,
         type,
         dynamic,
-        destination: formData.destination || formData.url || formData.data,
+        destination: formData.destination || formData.url || formData.pdfUrl || formData.imageUrl || formData.data || 'https://example.com',
         payload: formData,
         style: qrStyle,
         logo,
+        cardTemplate,
+        cardStyle,
+        cardConfig: cardData,
       });
-      toast.success('QR Code saved successfully!');
+      toast.success('QR Code & Card configuration saved to MongoDB!');
     } catch (err) {
       toast.error(err.message || 'Failed to save QR');
     } finally {
@@ -59,12 +62,12 @@ const FormWrapper = ({ title, icon, description, type, formData, dynamic = false
             <p className="text-sm ml-10 text-slate-400 mt-1">{description}</p>
           )}
         </div>
-        {/* // if tab is dynamic, show save button */}
+        {/* //save button on just dynamic url form */}
         {dynamic && (
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary text-sm flex items-center gap-2"
           >
             {saving ? (
               <>

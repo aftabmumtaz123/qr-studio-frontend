@@ -24,6 +24,8 @@ const navGroups = [
       { to: '/qr/phone', icon: Phone, label: 'Phone' },
       { to: '/qr/wifi', icon: Wifi, label: 'WiFi' },
       { to: '/qr/vcard', icon: User, label: 'vCard' },
+      { to: '/qr/pdf', icon: FileText, label: 'PDF Document' },
+      { to: '/qr/image', icon: Camera, label: 'Image QR' },
     ],
   },
   {

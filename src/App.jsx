@@ -20,6 +20,7 @@ import VCardForm from './pages/forms/VCardForm';
 import WiFiForm from './pages/forms/WiFiForm';
 import EventForm from './pages/forms/EventForm';
 import PDFForm from './pages/forms/PDFForm';
+import ImageForm from './pages/forms/ImageForm';
 import AppForm from './pages/forms/AppForm';
 import SocialForm from './pages/forms/SocialForm';
 import InstagramForm from './pages/forms/InstagramForm';
@@ -48,6 +49,7 @@ function App() {
               <Route path="qr/wifi" element={<WiFiForm />} />
               <Route path="qr/event" element={<EventForm />} />
               <Route path="qr/pdf" element={<PDFForm />} />
+              <Route path="qr/image" element={<ImageForm />} />
               <Route path="qr/app" element={<AppForm />} />
               <Route path="qr/social" element={<SocialForm />} />
               <Route path="qr/instagram" element={<InstagramForm />} />

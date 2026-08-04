@@ -18,18 +18,34 @@ const schema = z.object({
 });
 
 const VCardForm = () => {
-  const { updateQRData } = useQR();
+  const { updateQRData, updateCardData, setActiveType } = useQR();
   const { register, watch, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
   const values = watch();
 
   useEffect(() => {
+    setActiveType('VCARD');
+  }, [setActiveType]);
+
+  useEffect(() => {
     const { firstName, lastName, phone, email, website, company, title, address, notes } = values;
+
+    const fullName = `${firstName || ''} ${lastName || ''}`.trim() || 'John Doe';
+    updateCardData({
+      name: fullName,
+      phone: phone || '+1234567890',
+      email: email || 'john@example.com',
+      website: website || 'https://example.com',
+      company: company || 'Acme Inc.',
+      title: title || 'CEO & Founder',
+      address: address || '123 Tech Blvd',
+    });
+
     if (!firstName && !phone) return;
 
     const vcard = [
       'BEGIN:VCARD',
       'VERSION:3.0',
-      `FN:${firstName || ''} ${lastName || ''}`.trim(),
+      `FN:${fullName}`,
       `N:${lastName || ''};${firstName || ''};;;`,
       phone ? `TEL:${phone}` : '',
       email ? `EMAIL:${email}` : '',

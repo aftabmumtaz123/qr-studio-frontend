@@ -1,15 +1,41 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQR } from '../contexts/QRContext';
-import { Copy, Download, Zap, Sparkles, CheckCircle2, Clock, Globe, BarChart2 } from 'lucide-react';
+import CardPreview from './CardPreview';
+import CardCustomizer from './CardCustomizer';
+import { 
+  downloadStandaloneQR, 
+  downloadCardImage, 
+  downloadBothAsZip 
+} from '../utils/exportUtils';
+import { 
+  Copy, Download, Sparkles, CheckCircle2, Clock, Globe, 
+  BarChart2, QrCode, CreditCard, SlidersHorizontal, Archive
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const QRPreviewPanel = () => {
-  const { qrData, qrStyle, logo, setQrRef, activeType } = useQR();
+  const { qrData, qrStyle, logo, setQrRef, activeType, exportQuality, setExportQuality } = useQR();
   const containerRef = useRef(null);
+  const cardRef = useRef(null);
   const qrCodeRef = useRef(null);
+
   const [QRCodeStylingClass, setQRCodeStylingClass] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [activePreviewTab, setActivePreviewTab] = useState('qr'); // 'qr' | 'card' | 'both'
+  const [showCustomizer, setShowCustomizer] = useState(false);
+
+  const isVCard = activeType === 'VCARD';
+
+  // When user navigates to vCard, default to 'card' tab; otherwise force 'qr'
+  useEffect(() => {
+    if (isVCard) {
+      setActivePreviewTab('card');
+    } else {
+      setActivePreviewTab('qr');
+      setShowCustomizer(false);
+    }
+  }, [isVCard]);
 
   useEffect(() => {
     import('qr-code-styling').then((module) => {
@@ -19,8 +45,9 @@ const QRPreviewPanel = () => {
     });
   }, []);
 
+  // Create QR instance once the library is loaded
   useEffect(() => {
-    if (!QRCodeStylingClass) return;
+    if (!QRCodeStylingClass || !containerRef.current) return;
 
     setIsUpdating(true);
     const timer = setTimeout(() => setIsUpdating(false), 200);
@@ -34,17 +61,20 @@ const QRPreviewPanel = () => {
         });
         qrCodeRef.current = qrCode;
         setQrRef(qrCode);
-
-        if (containerRef.current) {
-          containerRef.current.innerHTML = '';
-          qrCode.append(containerRef.current);
-        }
+        containerRef.current.innerHTML = '';
+        qrCode.append(containerRef.current);
       } else {
         qrCodeRef.current.update({
           ...qrStyle,
           data: qrData || 'https://example.com',
           image: logo || undefined,
         });
+
+        // Re-append if container lost the canvas (e.g. React re-render)
+        if (containerRef.current && !containerRef.current.querySelector('canvas')) {
+          containerRef.current.innerHTML = '';
+          qrCodeRef.current.append(containerRef.current);
+        }
       }
     } catch (e) {
       console.error('QR code generation error:', e);
@@ -53,12 +83,7 @@ const QRPreviewPanel = () => {
     return () => clearTimeout(timer);
   }, [QRCodeStylingClass, qrData, qrStyle, logo]);
 
-  const handleDownload = (ext) => {
-    qrCodeRef.current?.download({ name: 'qr-code', extension: ext });
-    toast.success(`Downloading as ${ext.toUpperCase()}`);
-  };
-
-  const handleCopy = async () => {
+  const handleCopyQR = async () => {
     try {
       const canvas = containerRef.current?.querySelector('canvas');
       if (canvas) {
@@ -74,110 +99,208 @@ const QRPreviewPanel = () => {
     }
   };
 
-  const isDynamic = activeType === 'DYNAMIC_URL' || activeType === 'DYNAMIC';
-
   return (
-    <aside className="w-80 flex-shrink-0 h-full bg-surface-900 border-l border-surface-800 flex flex-col sticky top-0 right-0 z-10 select-none">
-      {/* Panel Header */}
-      <div className="px-4 py-3.5 border-b border-surface-800 flex items-center justify-between">
-        <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <Sparkles size={14} className="text-brand-400" />
-          Live Telemetry Preview
-        </h2>
-        {/* <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-          isDynamic
-            ? 'bg-brand-500/20 text-brand-300 border-brand-500/30'
-            : 'bg-surface-800 text-slate-400 border-surface-700'
-        }`}>
-          {isDynamic ? <Zap size={10} /> : null} {isDynamic ? 'DYNAMIC' : 'STATIC'}
-        </span> */}
+    <aside className="w-96 flex-shrink-0 h-full bg-surface-900 border-l border-surface-800 flex flex-col sticky top-0 right-0 z-10 select-none overflow-hidden">
+      {/* Panel Header & Preview Selector */}
+      <div className="px-4 py-3 border-b border-surface-800 flex flex-col space-y-2.5 bg-surface-950">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <Sparkles size={14} className="text-brand-400" />
+            Live Previews
+          </h2>
+          {/* Only show Customize Card button for vCard */}
+          {isVCard && (
+            <button
+              onClick={() => setShowCustomizer(!showCustomizer)}
+              className={`text-xs px-2.5 py-1 rounded-lg border font-medium flex items-center gap-1.5 transition-all ${
+                showCustomizer 
+                  ? 'bg-brand-600 text-white border-brand-500 shadow-glow' 
+                  : 'bg-surface-800 text-slate-300 border-surface-700 hover:bg-surface-750'
+              }`}
+            >
+              <SlidersHorizontal size={13} />
+              {showCustomizer ? 'Hide Styles' : 'Customize Card'}
+            </button>
+          )}
+        </div>
+
+        {/* Live Preview Mode Tabs — only show for vCard */}
+        {isVCard ? (
+          <div className="grid grid-cols-3 gap-1 bg-surface-900 p-1 rounded-xl text-xs font-medium border border-surface-800">
+            <button
+              onClick={() => setActivePreviewTab('card')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all ${
+                activePreviewTab === 'card' 
+                  ? 'bg-brand-600 text-white font-bold shadow-md' 
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <CreditCard size={13} />
+              Contact Card
+            </button>
+            <button
+              onClick={() => setActivePreviewTab('qr')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all ${
+                activePreviewTab === 'qr' 
+                  ? 'bg-brand-600 text-white font-bold shadow-md' 
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <QrCode size={13} />
+              QR Preview
+            </button>
+            <button
+              onClick={() => setActivePreviewTab('both')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all ${
+                activePreviewTab === 'both' 
+                  ? 'bg-brand-600 text-white font-bold shadow-md' 
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Sparkles size={13} />
+              Dual View
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 bg-surface-900 p-1.5 rounded-xl border border-surface-800">
+            <QrCode size={14} className="text-brand-400" />
+            <span className="text-xs font-bold text-slate-300">QR Code Preview</span>
+          </div>
+        )}
       </div>
 
-      {/* QR Canvas */}
-      <div className="flex-1 flex flex-col items-center justify-start p-5 space-y-4 overflow-y-auto">
+      {/* Main Preview Container */}
+      <div className="flex-1 flex flex-col items-center p-4 space-y-4 overflow-y-auto custom-scrollbar">
+        {/* Customizer Drawer — only for vCard */}
+        {isVCard && showCustomizer && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="w-full"
+          >
+            <CardCustomizer />
+          </motion.div>
+        )}
+
+        {/* Live Previews */}
         <motion.div
-          animate={{ scale: isUpdating ? 0.98 : 1 }}
+          animate={{ scale: isUpdating ? 0.99 : 1 }}
           transition={{ duration: 0.15 }}
-          className="relative p-5 rounded-2xl bg-surface-800 border border-surface-700 shadow-glow flex items-center justify-center min-w-[210px] min-h-[210px]"
+          className="w-full flex flex-col items-center justify-center space-y-4"
         >
-          <div ref={containerRef} className="rounded-lg h-120 w-120 overflow-hidden flex items-center justify-center" />
+          {/* 1. Contact Card Preview — only for vCard */}
+          {isVCard && (activePreviewTab === 'card' || activePreviewTab === 'both') && (
+            <div className="w-full flex flex-col items-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1 flex items-center gap-1">
+                <CreditCard size={12} className="text-brand-400" /> vCard Contact Card Preview
+              </span>
+              <div className="w-full p-2 rounded-2xl bg-surface-950/60 border border-surface-800 shadow-inner flex items-center justify-center">
+                <CardPreview cardRef={cardRef} />
+              </div>
+            </div>
+          )}
+
+          {/* 2. Standalone QR Code Preview — ALWAYS in DOM */}
+          <div
+            className="w-full flex flex-col items-center"
+            style={{ display: (!isVCard || activePreviewTab === 'qr' || activePreviewTab === 'both') ? 'flex' : 'none' }}
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1 flex items-center gap-1">
+              <QrCode size={12} className="text-brand-400" /> QR Code Preview
+            </span>
+            <div className="p-4 rounded-2xl bg-surface-800 border border-surface-700 shadow-glow flex items-center justify-center min-w-[200px] min-h-[200px]">
+              <div ref={containerRef} className="rounded-lg overflow-hidden flex items-center justify-center" />
+            </div>
+          </div>
         </motion.div>
 
-        {/* Real-Time Telemetry Info Box */}
-        <div className="w-full bg-surface-850 rounded-xl p-3 border border-surface-800 space-y-2.5">
+        {/* Telemetry Information Box */}
+        <div className="w-full bg-surface-850 rounded-xl p-3 border border-surface-800 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
             <span className="flex items-center gap-1">
-              <Globe size={12} className="text-brand-400" /> Telemetry Info
+              <Globe size={12} className="text-brand-400" /> Live Telemetry
             </span>
             <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-              <CheckCircle2 size={10} /> Live
+              <CheckCircle2 size={10} /> Active
             </span>
           </div>
 
-          <div className="space-y-1.5 text-[11px]">
-            <div>
-              <span className="text-slate-500 block text-[10px] uppercase font-bold">Encoded Data (QR Content)</span>
-              <p className="font-mono text-brand-300 truncate bg-surface-900 px-2 py-1 rounded border border-surface-800">
-                {qrData || 'https://example.com'}
-              </p>
-            </div>
-
-            {isDynamic && (
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Target Destination</span>
-                <p className="text-slate-300 truncate font-mono bg-surface-900 px-2 py-1 rounded border border-surface-800">
-                  {qrData ? qrData : 'https://google.com'}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-surface-800 text-[10px] text-slate-400">
-            <div className="flex items-center gap-1">
-              <BarChart2 size={11} className="text-brand-400" /> Total Scans: <strong className="text-white font-mono">0</strong>
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock size={11} className="text-brand-400" /> Status: <strong className="text-emerald-400">Active</strong>
-            </div>
+          <div className="space-y-1 text-[11px]">
+            <span className="text-slate-500 block text-[10px] uppercase font-bold">Target Data</span>
+            <p className="font-mono text-brand-300 truncate bg-surface-900 px-2 py-1 rounded border border-surface-800">
+              {qrData || 'https://example.com'}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Export Controls */}
-      <div className="p-4 border-t border-surface-800 space-y-2 bg-surface-900">
-        <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-          <span>Export Formats</span>
-          <span className="text-[10px] text-slate-500 font-mono">{qrStyle.width || 300}x{qrStyle.height || 300}px</span>
+      {/* Export Controls & Quality Selection */}
+      <div className="p-4 border-t border-surface-800 space-y-3 bg-surface-950">
+        {/* Export Resolution Selector */}
+        <div className="flex items-center justify-between text-xs text-slate-300 font-medium">
+          <span className="text-[11px] font-bold uppercase text-slate-400">Export Quality</span>
+          <select
+            value={exportQuality}
+            onChange={(e) => setExportQuality(e.target.value)}
+            className="input py-1 px-2 text-[11px] bg-surface-850 border-surface-700 w-auto font-mono"
+          >
+            <option value="1080p">1080×1080 (Standard)</option>
+            <option value="2048p">2048×2048  (HD)</option>
+            <option value="4K">3840×3840 (4K Ultra)</option>
+            <option value="print">Print Quality (300 DPI)</option>
+          </select>
         </div>
 
-        <div className="grid grid-cols-4 gap-1.5">
-          {['png', 'svg', 'jpeg', 'webp'].map((ext) => (
-            <button
-              key={ext}
-              onClick={() => handleDownload(ext)}
-              className="text-xs py-1.5 rounded-lg bg-surface-800 hover:bg-brand-600 text-slate-300 hover:text-white border border-surface-700 hover:border-brand-500 transition-all duration-200 font-semibold uppercase"
-            >
-              {ext}
-            </button>
-          ))}
+        {/* Download QR Section — always visible */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+            Download QR Code
+          </span>
+          <div className="grid grid-cols-4 gap-1">
+            {['png', 'svg', 'jpg', 'webp'].map((ext) => (
+              <button
+                key={ext}
+                onClick={() => downloadStandaloneQR(qrCodeRef, ext)}
+                className="text-[11px] py-1.5 rounded-lg bg-surface-800 hover:bg-brand-600 text-slate-300 hover:text-white border border-surface-700 transition-all font-bold uppercase"
+              >
+                {ext}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <button
-            onClick={handleCopy}
-            className="flex items-center justify-center gap-1.5 btn-secondary text-xs py-2"
-          >
-            <Copy size={13} />
-            Copy Image
-          </button>
-          <button
-            onClick={() => handleDownload('png')}
-            className="flex items-center justify-center gap-1.5 btn-primary text-xs py-2"
-          >
-            <Download size={13} />
-            Download
-          </button>
-        </div>
+        {/* Download Contact Card Section — only for vCard */}
+        {isVCard && (
+          <>
+            <div className="space-y-1.5">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                Download vCard Contact Card
+              </span>
+              <div className="grid grid-cols-4 gap-1">
+                {['png', 'jpg', 'pdf', 'svg'].map((fmt) => (
+                  <button
+                    key={fmt}
+                    onClick={() => downloadCardImage(cardRef.current, fmt, exportQuality)}
+                    className="text-[11px] py-1.5 rounded-lg bg-brand-950/60 hover:bg-brand-600 text-brand-300 hover:text-white border border-brand-800/60 transition-all font-bold uppercase"
+                  >
+                    {fmt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Download Both ZIP Action */}
+            <div className="pt-1">
+              <button
+                onClick={() => downloadBothAsZip(qrCodeRef, cardRef.current, exportQuality)}
+                className="w-full flex items-center justify-center gap-2 btn-primary py-2.5 text-xs font-bold shadow-glow"
+              >
+                <Archive size={15} />
+                Download Both (ZIP Bundle)
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </aside>
   );
