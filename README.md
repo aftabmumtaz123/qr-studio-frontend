@@ -1,16 +1,42 @@
-# React + Vite
+# QR Studio 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A full-stack Dynamic QR Code Generator Platform built with React (Vite) + Node.js + MongoDB.
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### 1. Backend
+```bash
+cd server
+cp .env.example .env
+# Edit .env and set your MONGO_URI
+npm install
+npm run dev
+```
+Server runs at **http://localhost:5000**
 
-## React Compiler
+### 2. Frontend
+```bash
+cd client
+# .env is already configured for local development
+npm run dev
+```
+App runs at **http://localhost:5173**
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Features
+- 🔗 20+ QR Types (URL, vCard, WiFi, Email, SMS, WhatsApp, and more)
+- ⚡ Dynamic QR Codes — change destination any time without reprinting
+- 🎨 Fully customizable QR appearance (colors, dot styles, logo, corner styles)
+- 📊 Scan analytics tracking
+- 💾 Save & manage QR codes
+- 📥 Download as PNG, SVG, JPEG, WebP
 
-## Expanding the Oxlint configuration
+## Tech Stack
+- **Frontend**: React 19, Vite, TailwindCSS, Framer Motion, React Hook Form + Zod, qr-code-styling
+- **Backend**: Node.js, Express.js, MongoDB, Mongoose
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Dynamic QR Flow
+1. User creates a Dynamic QR with a destination URL
+2. Backend generates a short code (e.g. `abc123`)
+3. QR encodes `http://localhost:5000/d/abc123`
+4. Scanning redirects to the current destination
+5. Destination can be updated anytime — same QR code!
