@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQR } from '../../contexts/QRContext';
 import FormWrapper from '../../components/FormWrapper';
 import {
@@ -9,21 +9,22 @@ import {
   CheckCircle2, XCircle, Settings, Layers, ListFilter, Sliders, ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { qrAPI } from '../../services/api';
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
   destination: z.string().url('Must be a valid URL starting with http:// or https://'),
-  customAlias: z.string().optional(),
+  customAlias: z.string().regex(/^[A-Za-z0-9_-]*$/, 'Use only letters, numbers, hyphens, or underscores').optional(),
   expiryDate: z.string().optional(),
   password: z.string().optional(),
   maxScans: z.string().optional(),
 });
 
 const DynamicURLForm = () => {
-  const { updateQRData, setActiveType } = useQR();
+  const { updateQRData, setActiveType, qrStyle, logo } = useQR();
   const [activeTab, setActiveTab] = useState('create');
   const [copied, setCopied] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState('A8X92P');
+  const [codeSeed] = useState(() => Math.random().toString(36).slice(2));
   const [shortUrl, setShortUrl] = useState('');
   const [isCreated, setIsCreated] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -39,18 +40,25 @@ const DynamicURLForm = () => {
 
   const values = watch();
 
+  const generatedCode = useMemo(() => {
+    const source = `${codeSeed}|${values.title || ''}|${values.destination || ''}`;
+    let hash = 2166136261;
+    for (let i = 0; i < source.length; i += 1) { hash ^= source.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+    return Math.abs(hash >>> 0).toString(36).toUpperCase().slice(0, 8);
+  }, [codeSeed, values.title, values.destination]);
+
   useEffect(() => {
     setActiveType('DYNAMIC_URL');
   }, [setActiveType]);
 
   useEffect(() => {
     const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
-    const code = values.customAlias || generatedCode;
+    const code = (values.customAlias || generatedCode).trim();
     const fullShortUrl = `${serverUrl}/d/${code}`;
     setShortUrl(fullShortUrl);
     // Dynamic QR encodes the short redirect URL, NOT the destination!
     updateQRData(fullShortUrl);
-  }, [values.destination, values.customAlias, generatedCode, updateQRData]);
+  }, [values.destination, values.title, values.customAlias, generatedCode, updateQRData]);
 
   const handleCopyShortUrl = () => {
     if (!shortUrl) return;
@@ -60,9 +68,19 @@ const DynamicURLForm = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleCreate = () => {
-    setIsCreated(true);
-    toast.success('Dynamic QR created & saved to MongoDB!');
+  const handleCreate = async () => {
+    if (!isValid) return;
+    try {
+      const code = (values.customAlias || generatedCode).trim();
+      await qrAPI.create({
+        title: values.title, type: 'DYNAMIC_URL', dynamic: true, code, destination: values.destination,
+        payload: values, style: qrStyle, logo,
+      });
+      setIsCreated(true);
+      toast.success('Dynamic QR created and saved');
+    } catch (err) {
+      toast.error(err.message || 'Could not save Dynamic QR');
+    }
   };
 
   return (
@@ -125,7 +143,7 @@ const DynamicURLForm = () => {
             description="QR encodes your short code. Destination can be edited anytime without reprinting!"
             type="DYNAMIC_URL"
             formData={values}
-            dynamic={true}
+            dynamic={false}
           >
             {/* Title */}
             <div>
@@ -162,6 +180,12 @@ const DynamicURLForm = () => {
                 placeholder="https://yourwebsite.com/landing-page"
               />
               {errors.destination && <p className="field-error">{errors.destination.message}</p>}
+            </div>
+
+            <div>
+              <label className="label">Custom Alias (Optional)</label>
+              <input {...register('customAlias')} className="input font-mono text-xs" placeholder="my-campaign" />
+              <p className="text-[10px] text-slate-500 mt-1">Leave empty and LumaLink generates a live code from the title and destination.</p>
             </div>
 
             {/* Generated Short URL Field */}

@@ -21,11 +21,21 @@ export const qrAPI = {
   getById: (id) => api.get(`/qr/${id}`),
   update: (id, data) => api.put(`/qr/${id}`, data),
   delete: (id) => api.delete(`/qr/${id}`),
+  toggle: (id) => api.patch(`/qr/${id}/toggle`),
 };
 
 // Analytics APIs
 export const analyticsAPI = {
   getByQR: (id) => api.get(`/analytics/${id}`),
+  getOverview: () => api.get('/analytics/overview'),
+};
+
+export const shortURLAPI = {
+  create: (data) => api.post('/short-urls', data),
+  getAll: () => api.get('/short-urls'),
+  update: (id, data) => api.put(`/short-urls/${id}`, data),
+  toggle: (id) => api.patch(`/short-urls/${id}/toggle`),
+  delete: (id) => api.delete(`/short-urls/${id}`),
 };
 
 export default api;

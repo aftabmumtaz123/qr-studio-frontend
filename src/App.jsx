@@ -8,6 +8,8 @@ import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import SavedQRs from './pages/SavedQRs';
 import QRSettings from './pages/QRSettings';
+import Analytics from './pages/Analytics';
+import URLShortener from './pages/URLShortener';
 
 // QR Forms
 import URLForm from './pages/forms/URLForm';
@@ -39,6 +41,9 @@ function App() {
           <Routes>
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Dashboard />} />
+              <Route path="shortener" element={<URLShortener />} />
+              <Route path="shortened" element={<URLShortener />} />
+              <Route path="analytics" element={<Analytics />} />
               <Route path="qr/url" element={<URLForm />} />
               <Route path="qr/text" element={<TextForm />} />
               <Route path="qr/email" element={<EmailForm />} />
