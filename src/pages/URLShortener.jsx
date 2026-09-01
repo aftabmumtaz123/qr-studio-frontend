@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Link2, Copy, Trash2, ExternalLink, Eye, Edit3, Power, X, MousePointerClick, CalendarDays, Activity, Save } from 'lucide-react';
+import { Link2, Copy, Trash2, ExternalLink, Eye, Edit3, Power, X, MousePointerClick, CalendarDays, Activity, Save, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { shortURLAPI } from '../services/api';
 
@@ -81,12 +81,52 @@ const URLShortener = () => {
     toast.success('Copied');
   };
 
+  const totalLinks = savedUrls.length;
+  const activeLinks = savedUrls.filter((item) => item.active !== false).length;
+  const inactiveLinks = totalLinks - activeLinks;
+  const totalClicks = savedUrls.reduce((sum, item) => sum + Number(item.clicks || 0), 0);
+
   return (
     <div className="dashboard-page url-shortener-page">
       <section className="page-heading">
         <div><p className="eyebrow">{isCreatePage ? 'URL Shortener' : 'Saved Links'}</p><h1>{isCreatePage ? 'Shorten your links' : 'My Short URLs'}</h1><p>{isCreatePage ? 'Create, manage and track your saved short URLs.' : 'Manage and track all of your saved short URLs.'}</p></div>
       </section>
 
+      <section className="stats-grid management-stats-grid shortener-stats">
+
+        <div className="stat-card">
+          <div className="stat-icon purple"><Link2 size={19} /></div>
+          <div>
+            <span>Total Short URLs</span>
+            <strong>{totalLinks}</strong>
+            <small>Saved in your workspace</small>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon green"><Activity size={19} /></div>
+          <div>
+            <span>Active Links</span>
+            <strong>{activeLinks}</strong>
+            <small>Currently available</small>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon blue"><MousePointerClick size={19} /></div>
+          <div>
+            <span>Total Clicks</span>
+            <strong>{totalClicks.toLocaleString()}</strong>
+            <small>Across all short URLs</small>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon orange"><Ban size={19} /></div>
+          <div>
+            <span>Inactive Links</span>
+            <strong>{inactiveLinks}</strong>
+            <small>Temporarily disabled</small>
+          </div>
+        </div>
+      </section>
 
       {isCreatePage && <section className="simple-panel shortener-panel shortener-form-panel">
         <div className="panel-heading"><div><p className="eyebrow">Create</p><h2>New short URL</h2></div></div>
@@ -103,6 +143,7 @@ const URLShortener = () => {
 
       <section className="simple-panel saved-shortener-panel">
         <div className="panel-heading"><div><p className="eyebrow">Saved Links</p><h2>My Short URLs</h2></div><span className="count-pill">{savedUrls.length}</span></div>
+
         {savedUrls.length === 0 ? <div className="empty-state">Your saved short URLs will appear here.</div> : (
           <div className="saved-links-table">
             <div className="saved-link-head">
@@ -158,7 +199,12 @@ const URLShortener = () => {
         <button className="modal-close" onClick={()=>setSelected(null)}><X size={17}/></button>
         <div className="modal-icon purple"><Link2 size={20}/></div><p className="eyebrow">Short URL Details</p><h2>{selected.title}</h2>
         <div className="detail-url">{selected.shortUrl}</div>
-        <div className="detail-stat-grid"><div><MousePointerClick/><span>Clicks</span><strong>{selected.clicks || 0}</strong></div><div><Activity/><span>Status</span><strong>{selected.active !== false ? 'Active' : 'Inactive'}</strong></div><div><CalendarDays/><span>Created</span><strong>{new Date(selected.createdAt).toLocaleDateString()}</strong></div></div>
+        <div className="detail-stat-grid">
+          <div><MousePointerClick /><span>Clicks</span><strong>{selected.clicks || 0}</strong></div>
+          <div><Activity /><span>Status</span><strong>{selected.active !== false ? 'Active' : 'Inactive'}</strong></div>
+          <div><CalendarDays /><span>Created</span><strong>{new Date(selected.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></div>
+        </div>
+
         <div className="detail-block"><small>Destination URL</small><p>{selected.originalUrl}</p></div>
         <div className="modal-actions"><button className="secondary-button" onClick={()=>copy(selected.shortUrl)}><Copy size={15}/> Copy</button><button className="secondary-button" onClick={()=>{startEdit(selected);setSelected(null)}}><Edit3 size={15}/> Update</button><button className="primary-button" onClick={()=>toggle(selected._id)}><Power size={15}/> {selected.active !== false ? 'Deactivate' : 'Activate'}</button></div>
       </div></div>}
