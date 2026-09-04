@@ -179,7 +179,7 @@ const QRPreviewPanel = () => {
 
         {/* Live Previews */}
         <motion.div
-          animate={{ scale: isUpdating ? 0.99 : 1 }}
+          animate={{ scale: 1 }}
           transition={{ duration: 0.15 }}
           className="w-full flex flex-col items-center justify-center space-y-4"
         >

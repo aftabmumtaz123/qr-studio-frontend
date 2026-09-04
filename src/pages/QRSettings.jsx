@@ -17,16 +17,43 @@ const THEMES = [
   { id: 'sunset', name: 'Sunset', description: 'Warm coral statement', style: { width: 250, height: 250, margin: 20, dotsOptions: { color: '#b45336', type: 'classy' }, backgroundOptions: { color: '#fffdfb' }, cornersSquareOptions: { color: '#8e3d27', type: 'extra-rounded' }, cornersDotOptions: { color: '#b45336', type: 'dot' }, errorCorrectionLevel: 'H', imageOptions: { crossOrigin: 'anonymous', margin: 5, imageSize: 0.26 } } },
 ];
 
-const ColorInput = ({ label, value, onChange }) => (
-  <div className="flex items-center gap-3">
-    <label className="label flex-1 mb-0">{label}</label>
-    <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-surface-700 bg-transparent" />
-    <input type="text" value={value || '#1e293b'} onChange={(e) => onChange(e.target.value)} className="input w-28 text-xs py-1.5" />
-  </div>
-);
+const normalizeHex = (value, fallback = '#ffffff') => {
+  const v = String(value || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+};
+
+const ColorInput = ({ label, value, onChange }) => {
+  const safeValue = normalizeHex(value);
+  return (
+    <div className="flex items-center gap-3">
+      <label className="label flex-1 mb-0">{label}</label>
+      <input
+        type="color"
+        value={safeValue}
+        onChange={(e) => onChange(normalizeHex(e.target.value))}
+        className="w-8 h-8 rounded cursor-pointer border border-surface-700 bg-transparent"
+      />
+      <input
+        type="text"
+        value={value || '#ffffff'}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => {
+          const normalized = normalizeHex(e.target.value, safeValue);
+          if (normalized !== e.target.value) onChange(normalized);
+        }}
+        className="input w-28 text-xs py-1.5"
+      />
+    </div>
+  );
+};
 
 const QRSettings = () => {
   const { qrStyle, updateStyle, resetStyle, setLogo, logo, selectedTheme, selectTheme, saveGlobalSettings } = useQR();
+
+  const updateColor = (section, color) => {
+    const normalized = normalizeHex(color);
+    updateStyle({ [section]: { color: normalized } });
+  };
   const [PreviewClass, setPreviewClass] = useState(null);
   const previewRef = useRef(null);
   const previewInstance = useRef(null);
@@ -37,7 +64,16 @@ const QRSettings = () => {
 
   useEffect(() => {
     if (!PreviewClass || !previewRef.current) return;
-    const options = { ...qrStyle, data: 'https://lumalink.app/demo', image: logo || undefined };
+
+    // qr-code-styling can retain/mutate nested option objects. Never give it
+    // references owned by React state, especially while a native color picker
+    // is emitting many onChange events during a drag.
+    const options = JSON.parse(JSON.stringify({
+      ...qrStyle,
+      data: 'https://lumalink.app/demo',
+      image: logo || undefined,
+    }));
+
     if (!previewInstance.current) {
       previewInstance.current = new PreviewClass(options);
       previewInstance.current.append(previewRef.current);
@@ -45,6 +81,10 @@ const QRSettings = () => {
       previewInstance.current.update(options);
     }
   }, [PreviewClass, qrStyle, logo]);
+
+  useEffect(() => () => {
+    previewInstance.current = null;
+  }, []);
 
   const handleLogoUpload = (e) => {
     const file = e.target.files?.[0];
@@ -90,10 +130,10 @@ const QRSettings = () => {
           </section>
 
           <section className="simple-panel space-y-4"><div className="panel-title"><div><h2>Colors</h2><p>Keep the code readable and brand-safe</p></div></div>
-            <ColorInput label="Dot Color" value={qrStyle.dotsOptions?.color} onChange={(c) => updateStyle({ dotsOptions: { ...qrStyle.dotsOptions, color: c } })} />
-            <ColorInput label="Background" value={qrStyle.backgroundOptions?.color} onChange={(c) => updateStyle({ backgroundOptions: { ...qrStyle.backgroundOptions, color: c } })} />
-            <ColorInput label="Corner Square" value={qrStyle.cornersSquareOptions?.color} onChange={(c) => updateStyle({ cornersSquareOptions: { ...qrStyle.cornersSquareOptions, color: c } })} />
-            <ColorInput label="Corner Dot" value={qrStyle.cornersDotOptions?.color} onChange={(c) => updateStyle({ cornersDotOptions: { ...qrStyle.cornersDotOptions, color: c } })} />
+            <ColorInput label="Dot Color" value={qrStyle.dotsOptions?.color} onChange={(c) => updateColor('dotsOptions', c)} />
+            <ColorInput label="Background" value={qrStyle.backgroundOptions?.color} onChange={(c) => updateColor('backgroundOptions', c)} />
+            <ColorInput label="Corner Square" value={qrStyle.cornersSquareOptions?.color} onChange={(c) => updateColor('cornersSquareOptions', c)} />
+            <ColorInput label="Corner Dot" value={qrStyle.cornersDotOptions?.color} onChange={(c) => updateColor('cornersDotOptions', c)} />
           </section>
 
           <section className="simple-panel space-y-4"><div className="panel-title"><div><h2>QR Shape</h2><p>Choose dot and corner styles</p></div></div>
