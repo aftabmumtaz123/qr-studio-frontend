@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const defaultStyle = {
   width: 250,
@@ -66,13 +66,50 @@ export const QRProvider = ({ children }) => {
     }
   }, [logo, selectedTheme]);
 
+  // Persist after state has actually changed. Never perform side effects from
+  // inside a setState updater; React may invoke updater functions more than once
+  // in development/StrictMode.
+  useEffect(() => {
+    persistSettings(qrStyle, selectedTheme, logo);
+  }, [qrStyle, selectedTheme, logo, persistSettings]);
+
+  // Update only when the requested value is actually different. This is
+  // important for controlled color/style inputs because some UI components can
+  // emit the same value more than once.
   const updateStyle = useCallback((updates) => {
     setQrStyle((prev) => {
-      const next = { ...prev, ...updates };
-      persistSettings(next);
-      return next;
+      let changed = false;
+      const next = { ...prev };
+
+      Object.entries(updates).forEach(([key, value]) => {
+        const previousValue = prev[key];
+
+        if (
+          value &&
+          typeof value === 'object' &&
+          !Array.isArray(value) &&
+          previousValue &&
+          typeof previousValue === 'object' &&
+          !Array.isArray(previousValue)
+        ) {
+          const merged = { ...previousValue, ...value };
+          const same = Object.keys(merged).every(
+            (nestedKey) => merged[nestedKey] === previousValue[nestedKey]
+          );
+
+          if (!same) {
+            next[key] = merged;
+            changed = true;
+          }
+        } else if (previousValue !== value) {
+          next[key] = value;
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
     });
-  }, [persistSettings]);
+  }, []);
 
   const updateCardStyle = useCallback((updates) => setCardStyle((prev) => ({ ...prev, ...updates })), []);
   const updateCardData = useCallback((updates) => setCardData((prev) => ({ ...prev, ...updates })), []);
@@ -85,8 +122,7 @@ export const QRProvider = ({ children }) => {
   const selectTheme = useCallback((theme) => {
     setSelectedTheme(theme.id);
     setQrStyle(theme.style);
-    persistSettings(theme.style, theme.id, logo);
-  }, [logo, persistSettings]);
+  }, []);
 
   const resetStyle = useCallback(() => {
     setQrStyle(defaultStyle);
@@ -98,7 +134,7 @@ export const QRProvider = ({ children }) => {
   return (
     <QRContext.Provider value={{
       activeType, setActiveType, qrData, updateQRData, qrStyle, updateStyle, resetStyle,
-      logo, setLogo: (value) => { setLogo(value); persistSettings(qrStyle, selectedTheme, value); },
+      logo, setLogo: (value) => setLogo(value),
       qrRef, setQrRef, defaultStyle, saveGlobalSettings, selectedTheme, selectTheme,
       cardTemplate, setCardTemplate, cardStyle, updateCardStyle, cardData, updateCardData,
       exportQuality, setExportQuality, defaultCardStyle,
