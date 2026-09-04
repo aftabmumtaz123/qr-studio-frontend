@@ -15,13 +15,12 @@ import {
 import toast from 'react-hot-toast';
 
 const QRPreviewPanel = () => {
-  const { qrData, qrStyle, logo, setQrRef, activeType, exportQuality, setExportQuality } = useQR();
+  const { qrData, qrStyle, logo, activeType, exportQuality, setExportQuality } = useQR();
   const containerRef = useRef(null);
   const cardRef = useRef(null);
   const qrCodeRef = useRef(null);
 
   const [QRCodeStylingClass, setQRCodeStylingClass] = useState(null);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [activePreviewTab, setActivePreviewTab] = useState('qr'); // 'qr' | 'card' | 'both'
   const [showCustomizer, setShowCustomizer] = useState(false);
 
@@ -49,28 +48,26 @@ const QRPreviewPanel = () => {
   useEffect(() => {
     if (!QRCodeStylingClass || !containerRef.current) return;
 
-    setIsUpdating(true);
-    const timer = setTimeout(() => setIsUpdating(false), 200);
+    // qr-code-styling can mutate nested option objects. Never give it the
+    // same nested references that React keeps in qrStyle; doing so can cause
+    // controlled inputs to receive values that changed outside React and can
+    // lead to update loops.
+    const options = JSON.parse(JSON.stringify({
+      ...qrStyle,
+      data: qrData || 'https://example.com',
+      image: logo || undefined,
+    }));
 
     try {
       if (!qrCodeRef.current) {
-        const qrCode = new QRCodeStylingClass({
-          ...qrStyle,
-          data: qrData || 'https://example.com',
-          image: logo || undefined,
-        });
+        const qrCode = new QRCodeStylingClass(options);
         qrCodeRef.current = qrCode;
-        setQrRef(qrCode);
         containerRef.current.innerHTML = '';
         qrCode.append(containerRef.current);
       } else {
-        qrCodeRef.current.update({
-          ...qrStyle,
-          data: qrData || 'https://example.com',
-          image: logo || undefined,
-        });
+        qrCodeRef.current.update(options);
 
-        // Re-append if container lost the canvas (e.g. React re-render)
+        // Re-append if the preview container lost the canvas.
         if (containerRef.current && !containerRef.current.querySelector('canvas')) {
           containerRef.current.innerHTML = '';
           qrCodeRef.current.append(containerRef.current);
@@ -79,8 +76,6 @@ const QRPreviewPanel = () => {
     } catch (e) {
       console.error('QR code generation error:', e);
     }
-
-    return () => clearTimeout(timer);
   }, [QRCodeStylingClass, qrData, qrStyle, logo]);
 
   const handleCopyQR = async () => {

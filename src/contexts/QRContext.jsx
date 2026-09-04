@@ -78,34 +78,28 @@ export const QRProvider = ({ children }) => {
   // emit the same value more than once.
   const updateStyle = useCallback((updates) => {
     setQrStyle((prev) => {
-      let changed = false;
       const next = { ...prev };
+      let changed = false;
 
-      Object.entries(updates).forEach(([key, value]) => {
-        const previousValue = prev[key];
-
-        if (
-          value &&
-          typeof value === 'object' &&
-          !Array.isArray(value) &&
-          previousValue &&
-          typeof previousValue === 'object' &&
-          !Array.isArray(previousValue)
-        ) {
-          const merged = { ...previousValue, ...value };
-          const same = Object.keys(merged).every(
-            (nestedKey) => merged[nestedKey] === previousValue[nestedKey]
-          );
+      for (const [key, value] of Object.entries(updates)) {
+        const previous = prev[key];
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          const merged = { ...(previous || {}), ...value };
+          const previousKeys = Object.keys(previous || {});
+          const mergedKeys = Object.keys(merged);
+          const same =
+            previousKeys.length === mergedKeys.length &&
+            mergedKeys.every((nestedKey) => merged[nestedKey] === previous?.[nestedKey]);
 
           if (!same) {
             next[key] = merged;
             changed = true;
           }
-        } else if (previousValue !== value) {
+        } else if (previous !== value) {
           next[key] = value;
           changed = true;
         }
-      });
+      }
 
       return changed ? next : prev;
     });
