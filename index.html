@@ -13,6 +13,7 @@
         document.body.appendChild(div);
         return false;
       };
+
       window.onunhandledrejection = function(e) {
         var div = document.createElement('div');
         div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#111;color:#ff5555;padding:20px;z-index:99999;font-family:monospace;white-space:pre-wrap;overflow:auto;';
