@@ -145,7 +145,7 @@ const QRSettings = () => {
             <div className="panel-title">
               <div><h2>Premium Design Themes</h2><p>Preview themes without changing your saved design</p></div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={refreshThemePreview} className="secondary-button text-xs py-2 px-3"><RefreshCw size={13} /> Undo</button>
+                <button type="button" onClick={refreshThemePreview} className="secondary-button text-xs py-2 px-3"><RefreshCw size={13} /> Refresh</button>
                 <button type="button" onClick={saveTheme} className="primary-button text-xs py-2 px-3"><Save size={13} /> Save Theme</button>
                 <Crown size={17} className="text-link" />
               </div>
