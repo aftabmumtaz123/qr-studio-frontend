@@ -34,7 +34,7 @@ const DynamicURLForm = () => {
     mode: 'onChange',
     defaultValues: {
       title: 'My Campaign Link',
-      destination: 'https://google.com',
+      destination: '',
     },
   });
 
