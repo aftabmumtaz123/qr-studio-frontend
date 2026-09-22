@@ -34,7 +34,7 @@ const DynamicURLForm = () => {
     mode: 'onChange',
     defaultValues: {
       title: 'My Campaign Link',
-      destination: '',
+      destination: 'https://google.com',
     },
   });
 
@@ -150,7 +150,7 @@ const DynamicURLForm = () => {
               <label className="label">Campaign Title *</label>
               <input
                 {...register('title')}
-                className="input"
+                className="input dynamic-url-form-field"
                 placeholder="e.g. Summer Promo Campaign"
               />
               {errors.title && <p className="field-error">{errors.title.message}</p>}
@@ -176,7 +176,7 @@ const DynamicURLForm = () => {
               </div>
               <input
                 {...register('destination')}
-                className="input font-mono text-xs"
+                className="input dynamic-url-form-field"
                 placeholder="https://yourwebsite.com/landing-page"
               />
               {errors.destination && <p className="field-error">{errors.destination.message}</p>}
@@ -184,7 +184,7 @@ const DynamicURLForm = () => {
 
             <div>
               <label className="label">Custom Alias (Optional)</label>
-              <input {...register('customAlias')} className="input font-mono text-xs" placeholder="my-campaign" />
+              <input {...register('customAlias')} className="input dynamic-url-form-field" placeholder="my-campaign" />
               <p className="text-[10px] text-slate-500 mt-1">Leave empty and LumaLink generates a live code from the title and destination.</p>
             </div>
 
