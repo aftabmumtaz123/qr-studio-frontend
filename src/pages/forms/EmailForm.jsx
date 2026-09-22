@@ -20,12 +20,19 @@ const EmailForm = () => {
   useEffect(() => {
     const { email, subject, body } = values;
     if (email) {
-      const params = new URLSearchParams();
-      if (subject) params.set('subject', subject);
-      if (body) params.set('body', body);
-      updateQRData(`mailto:${email}?${params.toString()}`);
+      // Build the mailto URI explicitly instead of using URLSearchParams.
+      // URLSearchParams encodes spaces as "+" (application/x-www-form-urlencoded),
+      // but mailto clients should receive spaces as percent-encoded "%20".
+      // This prevents scanned email QR codes from showing messages like:
+      // "Hy+Hello+How+are+you".
+      const params = [];
+      if (subject) params.push(`subject=${encodeURIComponent(subject)}`);
+      if (body) params.push(`body=${encodeURIComponent(body)}`);
+
+      const query = params.length ? `?${params.join('&')}` : '';
+      updateQRData(`mailto:${email.trim()}${query}`);
     }
-  }, [values.email, values.subject, values.body]);
+  }, [values.email, values.subject, values.body, updateQRData]);
 
   return (
     <FormWrapper title="Email QR Code" icon="✉️" description="Open an email compose window when scanned." type="EMAIL" formData={values}>
