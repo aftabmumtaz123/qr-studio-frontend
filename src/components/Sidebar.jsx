@@ -63,8 +63,8 @@ const Sidebar = () => {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 mb-5">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-glow">
-          <Zap size={16} className="text-white" />
+        <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+          <img src="/lumalink-icon.png" alt="LumaLink" className="w-8 h-8 object-contain" />
         </div>
         <AnimatePresence>
           {!collapsed && (

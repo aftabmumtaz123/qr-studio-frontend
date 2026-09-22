@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   QrCode, Link2, BarChart3, Settings, ChevronDown, Menu, X, Zap,
   Globe, UserRound, Mail, Type, Phone, Wifi, Calendar, FileText,
@@ -35,6 +35,12 @@ const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Close the QR dropdown automatically whenever navigation changes.
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
 
   const go = (path) => {
     navigate(path);
@@ -45,8 +51,8 @@ const Navbar = () => {
   return (
     <header className="navbar-shell">
       <div className="navbar-inner">
-        <NavLink to="/" className="brand" onClick={() => setMobileOpen(false)}>
-          <span className="brand-mark"><QrCode size={19} /></span>
+        <NavLink to="/" className="brand" onClick={() => { setOpen(false); setMobileOpen(false); }}>
+          <span className="brand-mark"><img src="/lumalink-icon.png" alt="LumaLink" /></span>
           <span>
             <strong>LumaLink</strong>
             <small>QR & Link Studio</small>
@@ -54,9 +60,9 @@ const Navbar = () => {
         </NavLink>
 
         <nav className="desktop-nav">
-          <NavLink to="/" className={linkClass}>Dashboard</NavLink>
-          <NavLink to="/shortener" className={linkClass}>URL Shortener</NavLink>
-          <NavLink to="/shortened" className={linkClass}>My Short URLs</NavLink>
+          <NavLink to="/" className={linkClass} onClick={() => setOpen(false)}>Dashboard</NavLink>
+          <NavLink to="/shortener" className={linkClass} onClick={() => setOpen(false)}>URL Shortener</NavLink>
+          <NavLink to="/shortened" className={linkClass} onClick={() => setOpen(false)}>My Short URLs</NavLink>
           <div className="nav-dropdown">
             <button
               type="button"
@@ -82,10 +88,10 @@ const Navbar = () => {
               </div>
             )}
           </div>
-          <NavLink to="/qr/dynamic" className={linkClass}><Zap size={15} /> Dynamic QR</NavLink>
-          <NavLink to="/saved" className={linkClass}>My QR Codes</NavLink>
-          <NavLink to="/analytics" className={linkClass}><BarChart3 size={15} /> Analytics</NavLink>
-          <NavLink to="/settings" className={linkClass}><Settings size={15} /> Settings</NavLink>
+          <NavLink to="/qr/dynamic" className={linkClass} onClick={() => setOpen(false)}><Zap size={15} /> Dynamic QR</NavLink>
+          <NavLink to="/saved" className={linkClass} onClick={() => setOpen(false)}>My QR Codes</NavLink>
+          <NavLink to="/analytics" className={linkClass} onClick={() => setOpen(false)}><BarChart3 size={15} /> Analytics</NavLink>
+          <NavLink to="/settings" className={linkClass} onClick={() => setOpen(false)}><Settings size={15} /> Settings</NavLink>
         </nav>
 
         <div className="navbar-actions">
