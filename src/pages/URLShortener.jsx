@@ -224,7 +224,7 @@ const URLShortener = () => {
         </div>
 
         <div className="detail-block"><small>Destination URL</small><p>{selected.originalUrl}</p></div>
-        <div className="modal-actions"><button className="secondary-button" onClick={()=>copy(selected.shortUrl)}><Copy size={15}/> Copy</button><button className="secondary-button" onClick={()=>{startEdit(selected);setSelected(null)}}><Edit3 size={15}/> Update</button><button className="primary-button" onClick={()=>toggle(selected._id)}><Power size={15}/> {selected.active !== false ? 'Deactivate' : 'Activate'}</button></div>
+        <div className="modal-actions"><button className="secondary-button" onClick={()=>copy(selected.shortUrl)}><Copy size={15}/> Copy</button><button className="secondary-button" onClick={()=>{startEdit(selected);setSelected(null)}}><Edit3 size={15}/> Update</button><button className={selected.active !== false ? "primary-button" : "inactive-toggle-button"} onClick={()=>toggle(selected._id)}><Power size={15}/> {selected.active !== false ? 'Deactivate' : 'Activate'}</button></div>
       </div></div>}
     </div>
   );
