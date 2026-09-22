@@ -14,7 +14,28 @@ const schema = z.object({
   title: z.string().optional(),
 });
 
-const toICS = (t) => (t || '').replace(/[-:T]/g, '').slice(0, 15);
+// datetime-local values represent the user's local time. Convert that exact
+// selected local time to UTC before putting it into the ICS payload. This
+// prevents calendar apps from interpreting the time as UTC/floating time and
+// shifting it when the QR code is scanned.
+const toICSDateTimeUTC = (value) => {
+  if (!value) return '';
+
+  const localDate = new Date(value);
+  if (Number.isNaN(localDate.getTime())) return '';
+
+  const pad = (number) => String(number).padStart(2, '0');
+
+  return `${localDate.getUTCFullYear()}${pad(localDate.getUTCMonth() + 1)}${pad(localDate.getUTCDate())}T${pad(localDate.getUTCHours())}${pad(localDate.getUTCMinutes())}${pad(localDate.getUTCSeconds())}Z`;
+};
+
+// Escape characters required by RFC 5545 so calendar apps receive the same
+// title/location/description that the user entered.
+const escapeICS = (value = '') => String(value)
+  .replace(/\\/g, '\\\\')
+  .replace(/;/g, '\\;')
+  .replace(/,/g, '\\,')
+  .replace(/\r?\n/g, '\\n');
 
 const EventForm = () => {
   const { updateQRData } = useQR();
@@ -24,18 +45,33 @@ const EventForm = () => {
   useEffect(() => {
     const { eventTitle, location, startDate, endDate, description } = values;
     if (eventTitle && startDate) {
+      const start = toICSDateTimeUTC(startDate);
+      const end = toICSDateTimeUTC(endDate);
+
+      if (!start) return;
+
+      const now = new Date();
+      const stamp = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}T${String(now.getUTCHours()).padStart(2, '0')}${String(now.getUTCMinutes()).padStart(2, '0')}${String(now.getUTCSeconds()).padStart(2, '0')}Z`;
+
       const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//LumaLink//QR Event//EN',
         'BEGIN:VEVENT',
-        `SUMMARY:${eventTitle}`,
-        `DTSTART:${toICS(startDate)}`,
-        endDate ? `DTEND:${toICS(endDate)}` : '',
-        location ? `LOCATION:${location}` : '',
-        description ? `DESCRIPTION:${description}` : '',
+        `UID:lumalink-${Date.now()}@lumalink`,
+        `DTSTAMP:${stamp}`,
+        `SUMMARY:${escapeICS(eventTitle)}`,
+        `DTSTART:${start}`,
+        end ? `DTEND:${end}` : '',
+        location ? `LOCATION:${escapeICS(location)}` : '',
+        description ? `DESCRIPTION:${escapeICS(description)}` : '',
         'END:VEVENT',
-      ].filter(Boolean).join('\n');
+        'END:VCALENDAR',
+      ].filter(Boolean).join('\r\n');
+
       updateQRData(ics);
     }
-  }, [JSON.stringify(values)]);
+  }, [JSON.stringify(values), updateQRData]);
 
   return (
     <FormWrapper title="Event QR Code" icon="📅" description="Add an event to the calendar when scanned." type="EVENT" formData={values}>

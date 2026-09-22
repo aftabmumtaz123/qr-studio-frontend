@@ -1,7 +1,8 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useQR } from '../../contexts/QRContext';
 import FormWrapper from '../../components/FormWrapper';
 
@@ -15,6 +16,7 @@ const schema = z.object({
 
 const WiFiForm = () => {
   const { updateQRData } = useQR();
+  const [showPassword, setShowPassword] = useState(false);
   const { register, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { encryption: 'WPA' },
@@ -37,7 +39,23 @@ const WiFiForm = () => {
       </div>
       <div>
         <label className="label">Password</label>
-        <input {...register('password')} type="password" className="input" placeholder="••••••••" />
+        <div className="relative">
+          <input
+            {...register('password')}
+            type={showPassword ? 'text' : 'password'}
+            className="input pr-12"
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-500 transition-colors"
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            title={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+          </button>
+        </div>
       </div>
       <div>
         <label className="label">Security Type</label>
