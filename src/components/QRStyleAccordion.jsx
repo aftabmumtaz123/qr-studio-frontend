@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQR } from '../contexts/QRContext';
+import { prepareLogoDataUrl } from '../utils/logoUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Palette, Layers, Eye, Image as ImageIcon, Sliders, ChevronDown, Frame, Sparkles, MoveRight } from 'lucide-react';
 
@@ -65,12 +66,16 @@ const ColorInput = ({ label, value, onChange }) => (
 const QRStyleAccordion = () => {
   const { qrStyle, updateStyle, setLogo, logo } = useQR();
 
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setLogo(ev.target.result);
-    reader.readAsDataURL(file);
+    try {
+      setLogo(await prepareLogoDataUrl(file));
+    } catch (error) {
+      window.alert(error.message || 'Could not process the logo');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   return (

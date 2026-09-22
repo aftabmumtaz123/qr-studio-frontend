@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Link2, Copy, Trash2, ExternalLink, Eye, Edit3, Power, X, MousePointerClick, CalendarDays, Activity, Save, Ban } from 'lucide-react';
+import { Link2, Copy, Trash2, ExternalLink, Eye, Edit3, Power, X, MousePointerClick, CalendarDays, Activity, Save, Ban, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { shortURLAPI } from '../services/api';
 
@@ -13,6 +13,7 @@ const URLShortener = () => {
   const [shortUrl, setShortUrl] = useState('');
   const [savedUrls, setSavedUrls] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState(null);
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({ title: '', url: '', alias: '' });
@@ -25,6 +26,23 @@ const URLShortener = () => {
   };
 
   useEffect(() => { loadSaved(); }, []);
+
+  const refreshSaved = async () => {
+    setRefreshing(true);
+    try {
+      const { data } = await shortURLAPI.getAll();
+      setSavedUrls(data);
+      if (selected) {
+        const updatedSelected = data.find((item) => item._id === selected._id);
+        setSelected(updatedSelected || null);
+      }
+      toast.success('Links refreshed');
+    } catch (error) {
+      toast.error(error.message || 'Failed to refresh links');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const shorten = async (event) => {
     event.preventDefault();
@@ -142,7 +160,7 @@ const URLShortener = () => {
       </section>}
 
       <section className="simple-panel saved-shortener-panel">
-        <div className="panel-heading"><div><p className="eyebrow">Saved Links</p><h2>My Short URLs</h2></div><span className="count-pill">{savedUrls.length}</span></div>
+        <div className="panel-heading"><div><p className="eyebrow">Saved Links</p><h2>My Short URLs</h2></div><div className="panel-heading-actions"><button className="secondary-button refresh-button" onClick={refreshSaved} disabled={refreshing} title="Refresh saved links"><RefreshCw size={15} className={refreshing ? 'spin' : ''} /> {refreshing ? 'Refreshing...' : 'Refresh'}</button><span className="count-pill">{savedUrls.length}</span></div></div>
 
         {savedUrls.length === 0 ? <div className="empty-state">Your saved short URLs will appear here.</div> : (
           <div className="saved-links-table">

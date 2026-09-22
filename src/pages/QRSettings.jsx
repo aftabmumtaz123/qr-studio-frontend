@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Check, Save, RotateCcw, Crown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQR } from '../contexts/QRContext';
+import { prepareLogoDataUrl } from '../utils/logoUtils';
 
 const DOT_TYPES = ['rounded', 'dots', 'classy', 'classy-rounded', 'square', 'extra-rounded'];
 const CORNER_SQUARE_TYPES = ['dot', 'square', 'extra-rounded'];
@@ -86,12 +87,17 @@ const QRSettings = () => {
     previewInstance.current = null;
   }, []);
 
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setLogo(ev.target.result);
-    reader.readAsDataURL(file);
+    try {
+      setLogo(await prepareLogoDataUrl(file));
+      toast.success('Logo added');
+    } catch (error) {
+      toast.error(error.message || 'Could not process the logo');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const save = () => {
