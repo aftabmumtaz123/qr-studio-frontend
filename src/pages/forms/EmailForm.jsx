@@ -12,20 +12,39 @@ const schema = z.object({
   title: z.string().optional(),
 });
 
+// mailto bodies must use URI percent-encoding. URLSearchParams is deliberately
+// not used here because it serialises spaces as "+", which is form encoding
+// and can appear literally in mail clients on Samsung/iOS.
+const encodeMailtoValue = (value = '') => encodeURIComponent(value);
+
 const EmailForm = () => {
   const { updateQRData } = useQR();
   const { register, watch, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
   const values = watch();
 
   useEffect(() => {
-    const { email, subject, body } = values;
-    if (email) {
-      const params = new URLSearchParams();
-      if (subject) params.set('subject', subject);
-      if (body) params.set('body', body);
-      updateQRData(`mailto:${email}?${params.toString()}`);
+    const email = values.email?.trim();
+    const subject = values.subject ?? '';
+    const body = values.body ?? '';
+
+    if (!email) return;
+
+    const params = [];
+
+    if (subject) {
+      params.push(`subject=${encodeMailtoValue(subject)}`);
     }
-  }, [values.email, values.subject, values.body]);
+
+    if (body) {
+      // Normalise textarea line endings to CRLF before URI encoding for
+      // consistent paragraph/newline handling across mail clients.
+      const normalizedBody = body.replace(/\r\n|\r|\n/g, '\r\n');
+      params.push(`body=${encodeMailtoValue(normalizedBody)}`);
+    }
+
+    const query = params.length ? `?${params.join('&')}` : '';
+    updateQRData(`mailto:${email}${query}`);
+  }, [values.email, values.subject, values.body, updateQRData]);
 
   return (
     <FormWrapper title="Email QR Code" icon="✉️" description="Open an email compose window when scanned." type="EMAIL" formData={values}>

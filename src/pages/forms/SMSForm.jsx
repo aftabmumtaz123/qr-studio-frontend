@@ -11,16 +11,38 @@ const schema = z.object({
   title: z.string().optional(),
 });
 
+// Normalise common phone-number formatting without changing the user's
+// international + prefix. This keeps the QR payload scanner-friendly.
+const normalizePhoneNumber = (value = '') => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  const hasPlus = trimmed.startsWith('+');
+  const digits = trimmed.replace(/\D/g, '');
+
+  return hasPlus ? `+${digits}` : digits;
+};
+
 const SMSForm = () => {
   const { updateQRData } = useQR();
   const { register, watch, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
   const values = watch();
 
   useEffect(() => {
-    if (values.phone) {
-      updateQRData(`sms:${values.phone}${values.message ? `?body=${encodeURIComponent(values.message)}` : ''}`);
-    }
-  }, [values.phone, values.message]);
+    const phone = normalizePhoneNumber(values.phone);
+
+    if (!phone) return;
+
+    // SMSTO is the QR/scanner convention supported by current iOS and
+    // Android/Samsung scanners. Keep the message as literal text here;
+    // percent-encoding the body would make scanners display %20, etc.
+    const message = values.message ?? '';
+    const payload = message
+      ? `SMSTO:${phone}:${message}`
+      : `SMSTO:${phone}`;
+
+    updateQRData(payload);
+  }, [values.phone, values.message, updateQRData]);
 
   return (
     <FormWrapper title="SMS QR Code" icon="💬" description="Compose a pre-filled SMS when scanned." type="SMS" formData={values}>
