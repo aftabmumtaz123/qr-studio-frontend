@@ -14,7 +14,7 @@ import { qrAPI } from '../../services/api';
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
   destination: z.string().url('Must be a valid URL starting with http:// or https://'),
-  customAlias: z.string().regex(/^[A-Za-z0-9_-]*$/, 'Use only letters, numbers, hyphens, or underscores').optional(),
+  customAlias: z.string().regex(/^[a-z0-9_-]*$/, 'Spaces and uppercase letters are not allowed').refine((value) => !value || value.length >= 3, 'Alias must be at least 3 characters').refine((value) => value.length <= 40, 'Alias must be 40 characters or fewer').optional(),
   expiryDate: z.string().optional(),
   password: z.string().optional(),
   maxScans: z.string().optional(),
@@ -29,7 +29,7 @@ const DynamicURLForm = () => {
   const [isCreated, setIsCreated] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const { register, watch, handleSubmit, formState: { errors, isValid } } = useForm({
+  const { register, watch, setValue, handleSubmit, formState: { errors, isValid } } = useForm({
     resolver: zodResolver(schema),
     mode: 'onChange',
     defaultValues: {
@@ -44,7 +44,7 @@ const DynamicURLForm = () => {
     const source = `${codeSeed}|${values.title || ''}|${values.destination || ''}`;
     let hash = 2166136261;
     for (let i = 0; i < source.length; i += 1) { hash ^= source.charCodeAt(i); hash = Math.imul(hash, 16777619); }
-    return Math.abs(hash >>> 0).toString(36).toUpperCase().slice(0, 8);
+    return Math.abs(hash >>> 0).toString(36).toLowerCase().slice(0, 8);
   }, [codeSeed, values.title, values.destination]);
 
   useEffect(() => {
@@ -184,8 +184,24 @@ const DynamicURLForm = () => {
 
             <div>
               <label className="label">Custom Alias (Optional)</label>
-              <input {...register('customAlias')} className="input dynamic-url-form-field" placeholder="my-campaign" />
-              <p className="text-[10px] text-slate-500 mt-1">Leave empty and LumaLink generates a live code from the title and destination.</p>
+              <input
+                {...register('customAlias')}
+                className="input dynamic-url-form-field"
+                placeholder="my-campaign"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                onChange={(e) => {
+                  // Aliases are URL-safe slugs: lowercase only and no whitespace.
+                  const normalized = e.target.value.toLowerCase().replace(/\s+/g, '');
+                  setValue('customAlias', normalized, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                }}
+              />
+              {errors.customAlias ? (
+                <p className="field-error">{errors.customAlias.message}</p>
+              ) : (
+                <p className="text-[10px] text-slate-500 mt-1">Spaces and uppercase letters are not allowed. They are removed automatically. Use lowercase letters, numbers, hyphens, or underscores.</p>
+              )}
             </div>
 
             {/* Generated Short URL Field */}
