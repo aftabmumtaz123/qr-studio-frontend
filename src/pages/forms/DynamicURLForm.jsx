@@ -33,7 +33,7 @@ const DynamicURLForm = () => {
     resolver: zodResolver(schema),
     mode: 'onChange',
     defaultValues: {
-      title: 'My Campaign Link',
+      title: '',
       destination: '',
     },
   });
