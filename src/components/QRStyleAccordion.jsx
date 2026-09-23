@@ -188,27 +188,40 @@ const QRStyleAccordion = () => {
           </div>
 
           {logo && (
-            <div className="space-y-2 pt-2 border-t border-surface-800">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">Logo Size</span>
-                <span className="text-xs font-mono text-brand-300">
-                  {Math.round((qrStyle.imageOptions?.imageSize || 0.3) * 100)}%
-                </span>
+            <div className="rounded-xl border border-surface-700 bg-surface-850 p-3 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 rounded-lg bg-white border border-surface-700 flex items-center justify-center overflow-hidden shrink-0">
+                    <img src={logo} alt="Current QR logo" className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-200">Logo added</p>
+                    <p className="text-[11px] text-slate-500 truncate">This logo appears in the center of your QR code.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLogo(null)}
+                  className="shrink-0 text-[11px] font-semibold text-red-400 hover:text-red-300 transition-colors"
+                >
+                  Remove Logo
+                </button>
               </div>
-              <input
-                type="range" min={10} max={50} step={5}
-                value={(qrStyle.imageOptions?.imageSize || 0.3) * 100}
-                onChange={(e) => updateStyle({ imageOptions: { ...qrStyle.imageOptions, imageSize: +e.target.value / 100 } })}
-                className="w-full accent-brand-500"
-              />
 
-              <button
-                type="button"
-                onClick={() => setLogo(null)}
-                className="text-[11px] text-red-400 hover:text-red-300 transition-colors pt-1"
-              >
-                Remove Logo
-              </button>
+              <div className="pt-2 border-t border-surface-700">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-400">Logo Size</span>
+                  <span className="text-xs font-mono text-brand-300">
+                    {Math.round((qrStyle.imageOptions?.imageSize || 0.3) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range" min={10} max={60} step={5}
+                  value={(qrStyle.imageOptions?.imageSize || 0.3) * 100}
+                  onChange={(e) => updateStyle({ imageOptions: { ...qrStyle.imageOptions, imageSize: +e.target.value / 100 } })}
+                  className="w-full accent-brand-500"
+                />
+              </div>
             </div>
           )}
         </div>

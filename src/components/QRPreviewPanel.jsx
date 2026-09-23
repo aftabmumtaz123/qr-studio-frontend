@@ -44,39 +44,52 @@ const QRPreviewPanel = () => {
     });
   }, []);
 
-  // Create QR instance once the library is loaded
+  // Render the QR preview. qr-code-styling merges update options, so an
+  // image that was previously supplied can remain visible when `image` is
+  // later set to undefined. When the logo changes (especially when it is
+  // removed), recreate the QR instance exactly like the Settings preview.
+  // This guarantees the old logo is actually removed from the canvas.
+  const previousLogoRef = useRef(logo);
+
   useEffect(() => {
     if (!QRCodeStylingClass || !containerRef.current) return;
 
-    // qr-code-styling can mutate nested option objects. Never give it the
-    // same nested references that React keeps in qrStyle; doing so can cause
-    // controlled inputs to receive values that changed outside React and can
-    // lead to update loops.
+    const logoChanged = previousLogoRef.current !== logo;
+    previousLogoRef.current = logo;
+
     const options = JSON.parse(JSON.stringify({
       ...qrStyle,
       data: qrData || 'https://example.com',
-      image: logo || undefined,
+      ...(logo ? { image: logo } : {}),
     }));
 
     try {
-      if (!qrCodeRef.current) {
-        const qrCode = new QRCodeStylingClass(options);
-        qrCodeRef.current = qrCode;
-        containerRef.current.innerHTML = '';
-        qrCode.append(containerRef.current);
-      } else {
-        qrCodeRef.current.update(options);
+      // A logo add/remove requires a fresh instance because qr-code-styling
+      // can retain the previous image when update() receives no image.
+      if (!qrCodeRef.current || logoChanged) {
+        if (containerRef.current) containerRef.current.innerHTML = '';
+        qrCodeRef.current = new QRCodeStylingClass(options);
+        qrCodeRef.current.append(containerRef.current);
+        return;
+      }
 
-        // Re-append if the preview container lost the canvas.
-        if (containerRef.current && !containerRef.current.querySelector('canvas')) {
-          containerRef.current.innerHTML = '';
-          qrCodeRef.current.append(containerRef.current);
-        }
+      qrCodeRef.current.update(options);
+
+      // Re-append if the preview container lost the canvas.
+      if (containerRef.current && !containerRef.current.querySelector('canvas')) {
+        containerRef.current.innerHTML = '';
+        qrCodeRef.current.append(containerRef.current);
       }
     } catch (e) {
       console.error('QR code generation error:', e);
     }
   }, [QRCodeStylingClass, qrData, qrStyle, logo]);
+
+  // Clean up the QR canvas when the preview panel unmounts.
+  useEffect(() => () => {
+    if (containerRef.current) containerRef.current.innerHTML = '';
+    qrCodeRef.current = null;
+  }, []);
 
   const handleCopyQR = async () => {
     try {
