@@ -96,27 +96,7 @@ const EventForm = () => {
       formData={values}
       dynamic={false}
     >
-      <div className="p-3.5 rounded-xl bg-brand-500/10 border border-brand-500/20 space-y-2">
-        <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
-          <CalendarPlus size={14} />
-          Static iCalendar Event
-        </div>
-        <p className="text-[11px] leading-5 text-slate-400">
-          The QR contains a compact VCALENDAR/VEVENT payload. The phone decides whether to offer Samsung Calendar, Google Calendar, or another compatible calendar action.
-        </p>
-        {eventPayload && (
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="rounded-lg bg-surface-900/60 px-2.5 py-2">
-              <span className="block text-[9px] uppercase font-bold text-slate-500">Payload</span>
-              <strong className="text-xs text-slate-200">{payloadStats.bytes} bytes</strong>
-            </div>
-            <div className="rounded-lg bg-surface-900/60 px-2.5 py-2">
-              <span className="block text-[9px] uppercase font-bold text-slate-500">ECC</span>
-              <strong className="text-xs text-slate-200">{qrStyle.errorCorrectionLevel || 'M'}</strong>
-            </div>
-          </div>
-        )}
-      </div>
+     
 
       <div>
         <label className="label">Event Title *</label>
