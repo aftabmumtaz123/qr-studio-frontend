@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 const typeColors = { URL:'blue', TEXT:'green', EMAIL:'orange', SMS:'pink', DYNAMIC_URL:'purple', VCARD:'rose', WIFI:'cyan', EVENT:'amber' };
 const getPublicQRUrl = (qr) => {
   const serverUrl = (import.meta.env.VITE_SERVER_URL || 'http://localhost:5000').replace(/\/$/, '');
-  if (qr.type === 'EVENT' && qr.code) return `${serverUrl}/event/${qr.code}`;
   if (qr.dynamic && qr.code) return `${serverUrl}/d/${qr.code}`;
   return qr.destination || qr.payload?.data || 'QR code content';
 };

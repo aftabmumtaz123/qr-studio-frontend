@@ -45,7 +45,7 @@ const contrastRatio = (foreground, background) => {
 
 // This is a heuristic scanability score, not a measured probability of a
 // particular phone camera/scanner successfully decoding the QR code.
-const calculateScanability = (style, hasLogo) => {
+const calculateScanability = (style, hasLogo, data = '', activeType = '') => {
   const fg = style?.dotsOptions?.color || '#1e293b';
   const bg = style?.backgroundOptions?.color || '#ffffff';
   const eye = style?.cornersSquareOptions?.color || fg;
@@ -89,7 +89,25 @@ const calculateScanability = (style, hasLogo) => {
   if (bgLum >= 0.6) score += 5;
   else warnings.push('A light background is more consistently recognized by phone scanners.');
 
-  return { score: Math.max(0, Math.min(100, Math.round(score))), contrast, eyeContrast, warnings };
+  // Event QR payloads are much denser than URLs. Treat payload length as a
+  // compatibility factor so the score warns before the symbol becomes
+  // impractically dense for phone cameras.
+  const payloadBytes = typeof TextEncoder !== 'undefined'
+    ? new TextEncoder().encode(String(data || '')).length
+    : String(data || '').length;
+  if (activeType === 'EVENT') {
+    if (payloadBytes <= 220) score += 5;
+    else if (payloadBytes <= 320) score += 3;
+    else if (payloadBytes <= 450) {
+      score += 1;
+      warnings.push('Event payload is getting dense; shorten the description for easier scanning.');
+    } else {
+      warnings.push('Event payload is very dense; remove optional description/location text or enlarge the QR.');
+    }
+    if (!hasLogo && ecc === 'M') warnings.push('For a dense Event QR, ECC Q can provide additional recovery without the logo overhead of H.');
+  }
+
+  return { score: Math.max(0, Math.min(100, Math.round(score))), contrast, eyeContrast, payloadBytes, warnings };
 };
 
 const QRPreviewPanel = () => {
@@ -103,7 +121,7 @@ const QRPreviewPanel = () => {
   const [showCustomizer, setShowCustomizer] = useState(false);
 
   const isVCard = activeType === 'VCARD';
-  const scanability = useMemo(() => calculateScanability(qrStyle, Boolean(logo)), [qrStyle, logo]);
+  const scanability = useMemo(() => calculateScanability(qrStyle, Boolean(logo), qrData, activeType), [qrStyle, logo, qrData, activeType]);
 
   // When user navigates to vCard, default to 'card' tab; otherwise force 'qr'
   useEffect(() => {
@@ -351,6 +369,12 @@ const QRPreviewPanel = () => {
               <span className="text-slate-500 block">ECC</span>
               <strong className="text-slate-200">{qrStyle.errorCorrectionLevel || 'M'}</strong>
             </div>
+            {activeType === 'EVENT' && (
+              <div className="rounded-lg bg-surface-900 border border-surface-800 px-2 py-1.5">
+                <span className="text-slate-500 block">Event payload</span>
+                <strong className="text-slate-200">{scanability.payloadBytes} B</strong>
+              </div>
+            )}
           </div>
 
           {scanability.warnings.length > 0 ? (
