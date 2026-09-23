@@ -10,11 +10,11 @@ import FormWrapper from '../../components/FormWrapper';
 import { buildEventQRPayload, getEventPayloadStats } from '../../utils/eventQR';
 
 const schema = z.object({
-  eventTitle: z.string().min(1, 'Event title is required').max(120, 'Event title is too long'),
-  location: z.string().max(160, 'Location is too long').optional(),
+  eventTitle: z.string().min(1, 'Event title is required').max(80, 'Keep the event title under 80 characters for Samsung compatibility'),
+  location: z.string().max(120, 'Keep the location under 120 characters for Samsung compatibility').optional(),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().optional(),
-  description: z.string().max(240, 'Keep the description under 240 characters for better QR compatibility').optional(),
+  description: z.string().max(180, 'Keep the description under 180 characters for better QR compatibility').optional(),
   title: z.string().optional(),
 });
 
@@ -124,7 +124,7 @@ const EventForm = () => {
 
       <div>
         <label className="label">Description</label>
-        <textarea {...register('description')} className="input min-h-[80px] resize-y" placeholder="Keep this short for a denser, more scanner-friendly QR..." />
+        <textarea {...register('description')} className="input min-h-[80px] resize-y" placeholder="Keep this short for better Samsung compatibility..." />
         {errors.description && <p className="field-error">{errors.description.message}</p>}
       </div>
 

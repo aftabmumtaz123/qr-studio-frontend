@@ -6,57 +6,39 @@ const escapeICSText = (value = '') => String(value)
   .replace(/,/g, '\\,')
   .replace(/\r?\n/g, '\\n');
 
-const toUTCStamp = (value) => {
+// Samsung's built-in QR handling is less tolerant of large/full iCalendar
+// envelopes and folded lines than some other scanners.  For a QR payload we
+// therefore use a compact, single VEVENT with local/floating time. This keeps
+// the event at the same wall-clock time at the venue and avoids timezone
+// conversion quirks seen in some Samsung Calendar versions.
+const toLocalStamp = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}Z`;
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 };
 
-// iCalendar lines are folded at 75 octets. This keeps UTF-8 event text valid
-// for stricter calendar parsers while remaining compact enough for QR codes.
-const foldICSLine = (line) => {
-  const chunks = [];
-  let current = '';
-  let bytes = 0;
+export const buildEventQRPayload = (
+  { eventTitle, startDate, endDate, location, description },
+) => {
+  const start = toLocalStamp(startDate);
+  const end = endDate ? toLocalStamp(endDate) : '';
 
-  for (const character of String(line)) {
-    const charBytes = new TextEncoder().encode(character).length;
-    const limit = chunks.length === 0 ? 75 : 74;
-    if (bytes + charBytes > limit && current) {
-      chunks.push(current);
-      current = ' ';
-      bytes = 1;
-    }
-    current += character;
-    bytes += charBytes;
-  }
-
-  if (current) chunks.push(current);
-  return chunks.join('\r\n');
-};
-
-export const buildEventQRPayload = ({ eventTitle, startDate, endDate, location, description }, uid = crypto.randomUUID()) => {
-  const start = toUTCStamp(startDate);
-  const end = endDate ? toUTCStamp(endDate) : '';
-  const stamp = toUTCStamp(new Date());
-
+  // Keep the payload intentionally compact for Samsung Camera/QR handling.
+  // Avoid UID/DTSTAMP/folding here: they are useful in .ics files but add
+  // density and can cause manufacturer scanners to treat the QR as plain text.
   const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//LumaLink//Event QR//EN',
     'BEGIN:VEVENT',
-    `UID:lumalink-${uid}@lumalink`,
-    `DTSTAMP:${stamp}`,
+    `SUMMARY:${escapeICSText(eventTitle || 'LumaLink Event')}`,
     start ? `DTSTART:${start}` : '',
     end ? `DTEND:${end}` : '',
-    `SUMMARY:${escapeICSText(eventTitle || 'LumaLink Event')}`,
     location ? `LOCATION:${escapeICSText(location)}` : '',
     description ? `DESCRIPTION:${escapeICSText(description)}` : '',
     'END:VEVENT',
-    'END:VCALENDAR',
   ].filter(Boolean);
 
-  return lines.map(foldICSLine).join('\r\n') + '\r\n';
+  // Do not fold lines. The EventForm limits the fields so the QR stays compact
+  // and Samsung's scanner does not have to unfold RFC 5545 continuation lines.
+  return lines.join('\r\n');
 };
 
 export const getEventPayloadStats = (payload) => {

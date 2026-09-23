@@ -104,7 +104,8 @@ const calculateScanability = (style, hasLogo, data = '', activeType = '') => {
     } else {
       warnings.push('Event payload is very dense; remove optional description/location text or enlarge the QR.');
     }
-    if (!hasLogo && ecc === 'M') warnings.push('For a dense Event QR, ECC Q can provide additional recovery without the logo overhead of H.');
+    if (!hasLogo && ecc === 'H') warnings.push('ECC H increases QR density; M or Q is usually easier to scan for a clean Event QR.');
+    warnings.push('Samsung compatibility mode uses a compact VEVENT payload with local event time.');
   }
 
   return { score: Math.max(0, Math.min(100, Math.round(score))), contrast, eyeContrast, payloadBytes, warnings };
