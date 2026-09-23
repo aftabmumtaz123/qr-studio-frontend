@@ -8,7 +8,6 @@ import FormWrapper from '../../components/FormWrapper';
 const schema = z.object({
   phone: z.string().min(7, 'Enter a valid phone number'),
   message: z.string().optional(),
-  title: z.string().optional(),
 });
 
 // Normalise common phone-number formatting without changing the user's
@@ -47,17 +46,13 @@ const SMSForm = () => {
   return (
     <FormWrapper title="SMS QR Code" icon="💬" description="Compose a pre-filled SMS when scanned." type="SMS" formData={values}>
       <div>
-        <label className="label">Title (optional)</label>
-        <input {...register('title')} className="input" placeholder="Send us a message" />
-      </div>
-      <div>
         <label className="label">Phone Number *</label>
         <input {...register('phone')} className="input" placeholder="+1234567890" />
         {errors.phone && <p className="field-error">{errors.phone.message}</p>}
       </div>
       <div>
-        <label className="label">Message (optional)</label>
-        <textarea {...register('message')} className="input min-h-[80px] resize-y" placeholder="Pre-filled message..." />
+        <label className="label">Pre-filled Message</label>
+        <textarea {...register('message')} className="input min-h-[80px] resize-y" placeholder="Send us a message" />
       </div>
     </FormWrapper>
   );
