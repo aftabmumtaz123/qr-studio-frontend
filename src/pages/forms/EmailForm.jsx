@@ -19,13 +19,27 @@ const EmailForm = () => {
 
   useEffect(() => {
     const { email, subject, body } = values;
-    if (email) {
-      const params = new URLSearchParams();
-      if (subject) params.set('subject', subject);
-      if (body) params.set('body', body);
-      updateQRData(`mailto:${email}?${params.toString()}`);
+    if (!email) return;
+
+    // Build the mailto URI manually. URLSearchParams encodes spaces as
+    // "+" which some Samsung/iOS mail clients display literally.
+    const encodeMailtoValue = (value = '') =>
+      encodeURIComponent(String(value))
+        .replace(/%0A/g, '%0D%0A');
+
+    const params = [];
+
+    if (subject?.trim()) {
+      params.push(`subject=${encodeMailtoValue(subject)}`);
     }
-  }, [values.email, values.subject, values.body]);
+
+    if (body?.trim()) {
+      params.push(`body=${encodeMailtoValue(body)}`);
+    }
+
+    const query = params.length ? `?${params.join('&')}` : '';
+    updateQRData(`mailto:${email.trim()}${query}`);
+  }, [values.email, values.subject, values.body, updateQRData]);
 
   return (
     <FormWrapper title="Email QR Code" icon="✉️" description="Open an email compose window when scanned." type="EMAIL" formData={values}>
