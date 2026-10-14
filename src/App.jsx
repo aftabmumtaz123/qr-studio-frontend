@@ -11,6 +11,8 @@ import QRSettings from './pages/QRSettings';
 import Analytics from './pages/Analytics';
 import URLShortener from './pages/URLShortener';
 
+
+
 // QR Forms
 import URLForm from './pages/forms/URLForm';
 import TextForm from './pages/forms/TextForm';

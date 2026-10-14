@@ -51,6 +51,9 @@ const ColorInput = ({ label, value, onChange }) => {
 const QRSettings = () => {
   const { qrStyle, updateStyle, resetStyle, setLogo, logo, selectedTheme, selectTheme, saveGlobalSettings } = useQR();
   const [themePreview, setThemePreview] = useState(() => ({ id: selectedTheme, style: qrStyle }));
+  const [showDeleteLogoModal, setShowDeleteLogoModal] = useState(false);
+  const [draftLogo, setDraftLogo] = useState(logo);
+  const [logoDirty, setLogoDirty] = useState(false);
 
   const updateColor = (section, color) => {
     const normalized = normalizeHex(color);
@@ -79,7 +82,7 @@ const QRSettings = () => {
     const options = JSON.parse(JSON.stringify({
       ...previewStyle,
       data: 'https://lumalink.app/demo',
-      ...(logo ? { image: logo } : {}),
+      ...(draftLogo ? { image: draftLogo } : {}),
     }));
 
     previewRef.current.innerHTML = '';
@@ -90,7 +93,7 @@ const QRSettings = () => {
       if (previewRef.current) previewRef.current.innerHTML = '';
       previewInstance.current = null;
     };
-  }, [PreviewClass, previewStyle, logo]);
+  }, [PreviewClass, previewStyle, draftLogo]);
 
   useEffect(() => () => {
     previewInstance.current = null;
@@ -100,8 +103,9 @@ const QRSettings = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      setLogo(await prepareLogoDataUrl(file));
-      toast.success('Logo added');
+      setDraftLogo(await prepareLogoDataUrl(file));
+      setLogoDirty(true);
+      toast.success('Logo selected. Click Save Settings to apply it.');
     } catch (error) {
       toast.error(error.message || 'Could not process the logo');
     } finally {
@@ -109,8 +113,37 @@ const QRSettings = () => {
     }
   };
 
+  const handleLogoRemove = () => {
+    if (!logo) return;
+    setShowDeleteLogoModal(true);
+  };
+
+  const confirmLogoRemove = () => {
+    setDraftLogo(null);
+    setLogoDirty(true);
+    setShowDeleteLogoModal(false);
+    toast.success('Logo removal pending. Click Save Settings to confirm.');
+  };
+
   const handleThemePreview = (theme) => {
     setThemePreview({ id: theme.id, style: theme.style });
+  };
+
+  // Keep the Settings page's independent theme preview in sync with the logo
+  // size slider. Updating qrStyle alone does not update previewStyle because
+  // themePreview intentionally stores a snapshot for theme previews.
+  const handleLogoSizeChange = (event) => {
+    const imageSize = Number(event.target.value) / 100;
+    updateStyle({
+      imageOptions: { ...(qrStyle.imageOptions || {}), imageSize },
+    });
+    setThemePreview((current) => ({
+      ...current,
+      style: {
+        ...current.style,
+        imageOptions: { ...(current.style.imageOptions || {}), imageSize },
+      },
+    }));
   };
 
   const saveTheme = () => {
@@ -125,7 +158,9 @@ const QRSettings = () => {
   };
 
   const save = () => {
-    saveGlobalSettings();
+    if (logoDirty) setLogo(draftLogo);
+    saveGlobalSettings(draftLogo);
+    setLogoDirty(false);
     toast.success('QR settings saved globally');
   };
 
@@ -198,12 +233,12 @@ const QRSettings = () => {
               className="block w-full text-sm text-slate-500"
             />
 
-            {logo && (
+            {draftLogo && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                      <img src={logo} alt="Current QR logo" className="max-w-full max-h-full object-contain" />
+                      <img src={draftLogo} alt="Current QR logo" className="max-w-full max-h-full object-contain" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-700">Logo added</p>
@@ -212,7 +247,7 @@ const QRSettings = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setLogo(null)}
+                    onClick={handleLogoRemove}
                     className="secondary-button shrink-0 !text-red-600 !border-red-200 hover:!bg-red-50"
                   >
                     Remove Logo
@@ -221,7 +256,7 @@ const QRSettings = () => {
               </div>
             )}
 
-            {logo && (
+            {draftLogo && (
               <div>
                 <label className="label">Logo size: {Math.round((qrStyle.imageOptions?.imageSize || .3) * 100)}%</label>
                 <input
@@ -230,7 +265,7 @@ const QRSettings = () => {
                   max={60}
                   step={5}
                   value={(qrStyle.imageOptions?.imageSize || .3) * 100}
-                  onChange={(e) => updateStyle({ imageOptions: { ...qrStyle.imageOptions, imageSize: +e.target.value / 100 } })}
+                  onChange={handleLogoSizeChange}
                   className="w-full"
                 />
               </div>
@@ -240,6 +275,34 @@ const QRSettings = () => {
 
         <section className="simple-panel lg:sticky lg:top-24"><div className="panel-title"><div><h2>Live Preview</h2><p>Updates as you change settings</p></div><span className="text-xs text-emerald-600 font-semibold">Live</span></div><div className="qr-preview-viewport min-h-[360px] rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center p-8 overflow-hidden"><div ref={previewRef} className="qr-preview-content max-w-full max-h-full flex items-center justify-center overflow-hidden" /></div><div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200"><p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Preview data</p><p className="text-xs text-slate-600 font-mono mt-1 truncate">https://lumalink.app/demo</p></div></section>
       </div>
+
+      {showDeleteLogoModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setShowDeleteLogoModal(false); }}
+          role="presentation"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-logo-title"
+            aria-describedby="delete-logo-description"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+          >
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <span className="text-2xl font-semibold" aria-hidden="true">!</span>
+            </div>
+            <h2 id="delete-logo-title" className="text-center text-lg font-semibold text-slate-900">Remove center logo?</h2>
+            <p id="delete-logo-description" className="mt-2 text-center text-sm leading-6 text-slate-600">Are you sure you want to remove this logo? It will be removed from the QR preview and saved logo settings.</p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button type="button" onClick={() => setShowDeleteLogoModal(false)} className="secondary-button justify-center">Cancel</button>
+              <button type="button" onClick={confirmLogoRemove} className="primary-button justify-center !bg-red-600 hover:!bg-red-700">Delete Logo</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   );
 };

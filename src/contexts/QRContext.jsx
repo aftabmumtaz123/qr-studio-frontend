@@ -109,13 +109,22 @@ export const QRProvider = ({ children }) => {
   const updateCardData = useCallback((updates) => setCardData((prev) => ({ ...prev, ...updates })), []);
   const updateQRData = useCallback((value) => setQrData(value), []);
 
-  const saveGlobalSettings = useCallback(() => {
-    persistSettings(qrStyle, selectedTheme, logo);
+  const saveGlobalSettings = useCallback((nextLogo = logo) => {
+    persistSettings(qrStyle, selectedTheme, nextLogo);
   }, [logo, persistSettings, qrStyle, selectedTheme]);
 
   const selectTheme = useCallback((theme) => {
     setSelectedTheme(theme.id);
-    setQrStyle(theme.style);
+    // Applying/saving a theme must not silently reset a custom center-logo
+    // size to the theme's default imageSize. Preserve the user's current size
+    // while applying the theme's other style settings.
+    setQrStyle((currentStyle) => ({
+      ...theme.style,
+      imageOptions: {
+        ...(theme.style.imageOptions || {}),
+        imageSize: currentStyle.imageOptions?.imageSize ?? theme.style.imageOptions?.imageSize ?? defaultStyle.imageOptions.imageSize,
+      },
+    }));
   }, []);
 
   const resetStyle = useCallback(() => {
