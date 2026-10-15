@@ -19,8 +19,8 @@ const CardPreview = ({ cardRef }) => {
       try {
         const qrCode = new QRCodeStylingClass({
           ...qrStyle,
-          width: 135,
-          height: 135,
+          width: 180,
+          height: 180,
           margin: 6,
           data: qrData || 'https://example.com',
           image: logo || undefined,
@@ -208,8 +208,8 @@ const CardPreview = ({ cardRef }) => {
               <span className="text-[9px] font-bold uppercase text-amber-400 tracking-wider">OFFICIAL QR</span>
               <p className="text-[10px] text-slate-400">Scan to save vCard</p>
             </div>
-            <div className="p-1.5 bg-white rounded-xl shadow-lg">
-              <div ref={qrContainerRef} className="flex items-center justify-center" />
+            <div className="p-1.5 bg-white rounded-xl shadow-lg shrink-0">
+              <div ref={qrContainerRef} className="w-[180px] h-[180px] shrink-0 flex items-center justify-center [&>canvas]:!w-[180px] [&>canvas]:!h-[180px] [&>svg]:!w-[180px] [&>svg]:!h-[180px]" />
             </div>
           </div>
         </div>
