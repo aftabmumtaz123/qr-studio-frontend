@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQR } from '../../contexts/QRContext';
 import FormWrapper from '../../components/FormWrapper';
 
@@ -18,9 +18,28 @@ const schema = z.object({
 });
 
 const VCardForm = () => {
-  const { updateQRData, updateCardData, setActiveType } = useQR();
+  const { updateQRData, updateCardData, updateCardStyle, cardStyle, setActiveType } = useQR();
+  const [avatarPreview, setAvatarPreview] = useState(cardStyle.avatar || '');
   const { register, watch, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
   const values = watch();
+
+  useEffect(() => {
+    setAvatarPreview(cardStyle.avatar || '');
+  }, [cardStyle.avatar]);
+
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 5 * 1024 * 1024) {
+      event.target.value = '';
+      window.alert('Please choose an image smaller than 5 MB.');
+      return;
+    }
+    const imageUrl = URL.createObjectURL(file);
+    updateCardStyle({ avatar: imageUrl });
+    setAvatarPreview(imageUrl);
+  };
 
   useEffect(() => {
     setActiveType('VCARD');
@@ -87,6 +106,25 @@ const VCardForm = () => {
         <label className="label">Website</label>
         <input {...register('website')} className="input" placeholder="https://example.com" />
         {errors.website && <p className="field-error">{errors.website.message}</p>}
+      </div>
+      <div className="space-y-2">
+        <label className="label">Profile Image</label>
+        <div className="flex items-center gap-3">
+          {avatarPreview ? (
+            <img src={avatarPreview} alt="Profile preview" className="h-14 w-14 rounded-full border border-slate-300 object-cover" />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+              <span className="text-xl">👤</span>
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <input type="file" accept="image/*" onChange={handleAvatarChange} className="input text-sm" aria-label="Upload profile image" />
+            <p className="mt-1 text-xs text-slate-500">Optional · JPG, PNG, or WebP · up to 5 MB</p>
+            {avatarPreview && (
+              <button type="button" onClick={() => { updateCardStyle({ avatar: '' }); setAvatarPreview(''); }} className="mt-1 text-xs font-medium text-slate-600 underline hover:text-slate-900">Remove image</button>
+            )}
+          </div>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>

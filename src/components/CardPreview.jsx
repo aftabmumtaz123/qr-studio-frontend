@@ -120,7 +120,7 @@ const CardPreview = ({ cardRef }) => {
               <h3 className="text-base font-bold truncate leading-tight">
                 {cardData.name || 'John Doe'}
               </h3>
-              <p className="text-xs font-semibold truncate" style={{ color: accentColor }}>
+              <p className="text-xs font-semibold truncate" style={{ color: isDark ? '#d1d5db' : '#374151' }}>
                 {cardData.title || 'CEO & Founder'}
               </p>
               <p className="text-[11px] opacity-60 truncate">
@@ -254,7 +254,7 @@ const CardPreview = ({ cardRef }) => {
               </div>
             )}
             <h3 className="text-base font-bold mt-2">{cardData.name || 'John Doe'}</h3>
-            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 mt-0.5">
+            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300 mt-0.5">
               {cardData.title || 'CEO & Founder'}
             </span>
           </div>
