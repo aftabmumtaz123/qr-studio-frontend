@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { qrAPI } from '../services/api';
 import { useQR } from '../contexts/QRContext';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Save, Loader2 } from 'lucide-react';
 import QRStyleAccordion from './QRStyleAccordion';
 
@@ -17,8 +17,14 @@ import QRStyleAccordion from './QRStyleAccordion';
  * @param {function} children - React children (the form itself)
  */
 const FormWrapper = ({ title, icon, description, type, formData, dynamic = false, children }) => {
-  const { qrStyle, logo, cardTemplate, cardStyle, cardData } = useQR();
+  const { qrStyle, logo, cardTemplate, cardStyle, cardData, setActiveType } = useQR();
   const [saving, setSaving] = useState(false);
+
+  // Every QR form declares its own type. Keep the shared preview in sync when
+  // navigating between forms, so vCard contact cards never leak into other QR types.
+  useEffect(() => {
+    if (type) setActiveType(type);
+  }, [type, setActiveType]);
 
   const handleSave = async () => {
     if (!formData) return;

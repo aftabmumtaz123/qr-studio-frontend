@@ -223,7 +223,9 @@ body { margin: 0; background: #f6f7fb; color: #182033; }
 .shortener-panel { max-width:850px; } .shortener-panel label { font-size:11px; font-weight:600; color:#6f7686; display:block; margin-bottom:7px; }
 .shortener-row { display:flex; align-items:center; gap:8px; padding:5px; border:1px solid #e5e7ed; border-radius:10px; background:#fbfbfc; } .shortener-row > span { color:#756be1; padding-left:7px; } .light-input { flex:1; border:0; outline:0; background:transparent; color:#2a3040; font:400 12px Inter,sans-serif; padding:9px 4px; } .result-row { margin-top:13px; padding:13px; background:#f8f7ff; border:1px solid #e8e5ff; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:12px; } .result-row small { display:block; color:#888e9e; font-size:9px; } .result-row strong { display:block; color:#554bd4; font-size:12px; margin-top:3px; }
 .secondary-button { border:1px solid #e2e4ea; background:#fff; color:#596071; padding:8px 11px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:600; cursor:pointer; }
-.content-with-preview .page-container { max-width:none; }
+.content-with-preview .page-container { max-width:none; min-width:0; flex:1 1 auto; }
+/* QR form pages use the full available left column instead of a narrow max-width wrapper. */
+.content-with-preview .page-container .max-w-xl { max-width:none !important; width:100% !important; min-width:0; }
 .content-with-preview > aside { margin-top:20px; margin-right:20px; margin-bottom:20px; }
 
 /* Keep the existing QR preview useful while matching the light UI. */

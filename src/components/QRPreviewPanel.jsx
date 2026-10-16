@@ -205,7 +205,7 @@ const QRPreviewPanel = () => {
   };
 
   return (
-    <aside className="w-96 flex-shrink-0 h-full bg-surface-900 border-l border-surface-800 flex flex-col sticky top-0 right-0 z-10 select-none overflow-hidden">
+    <aside className="w-[400px] flex-shrink-0 h-[calc(100vh-108px)] self-start bg-surface-900 border-l border-surface-800 flex flex-col sticky top-[88px] right-0 z-10 select-none overflow-hidden">
       {/* Panel Header & Preview Selector */}
       <div className="px-4 py-3 border-b border-surface-800 flex flex-col space-y-2.5 bg-surface-950">
         <div className="flex items-center justify-between">
@@ -275,7 +275,7 @@ const QRPreviewPanel = () => {
       </div>
 
       {/* Main Preview Container */}
-      <div className="flex-1 flex flex-col items-center p-4 space-y-4 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 min-h-0 flex flex-col items-center p-4 space-y-4 overflow-y-auto overscroll-contain custom-scrollbar">
         {/* Customizer Drawer — only for vCard */}
         {isVCard && showCustomizer && (
           <motion.div
