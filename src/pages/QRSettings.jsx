@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Save, RotateCcw, Crown, RefreshCw } from 'lucide-react';
+import { Check, Save, RotateCcw, Sparkles, SlidersHorizontal, Palette, ImagePlus, ScanLine, Download, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQR } from '../contexts/QRContext';
 import { prepareLogoDataUrl } from '../utils/logoUtils';
@@ -25,6 +25,8 @@ const normalizeHex = (value, fallback = '#ffffff') => {
 
 const ColorInput = ({ label, value, onChange }) => {
   const safeValue = normalizeHex(value);
+  const [textValue, setTextValue] = useState(value || '#ffffff');
+  useEffect(() => setTextValue(value || '#ffffff'), [value]);
   return (
     <div className="flex items-center gap-3">
       <label className="label flex-1 mb-0">{label}</label>
@@ -36,11 +38,16 @@ const ColorInput = ({ label, value, onChange }) => {
       />
       <input
         type="text"
-        value={value || '#ffffff'}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={(e) => {
-          const normalized = normalizeHex(e.target.value, safeValue);
-          if (normalized !== e.target.value) onChange(normalized);
+        value={textValue}
+        onChange={(e) => {
+          const next = e.target.value;
+          setTextValue(next);
+          if (/^#[0-9a-fA-F]{6}$/.test(next)) onChange(next);
+        }}
+        onBlur={() => {
+          const normalized = normalizeHex(textValue, safeValue);
+          setTextValue(normalized);
+          if (normalized !== value) onChange(normalized);
         }}
         className="input w-28 text-xs py-1.5"
       />
@@ -49,22 +56,42 @@ const ColorInput = ({ label, value, onChange }) => {
 };
 
 const QRSettings = () => {
-  const { qrStyle, updateStyle, resetStyle, setLogo, logo, selectedTheme, selectTheme, saveGlobalSettings } = useQR();
+  const { qrStyle, updateStyle, setLogo, logo, selectedTheme, selectTheme, saveGlobalSettings } = useQR();
   const [themePreview, setThemePreview] = useState(() => ({ id: selectedTheme, style: qrStyle }));
   const [showDeleteLogoModal, setShowDeleteLogoModal] = useState(false);
   const [draftLogo, setDraftLogo] = useState(logo);
   const [logoDirty, setLogoDirty] = useState(false);
 
+  const applyStyleChange = (updates) => {
+    setThemePreview((current) => {
+      const next = { ...current.style };
+      Object.entries(updates).forEach(([key, value]) => {
+        next[key] = value && typeof value === 'object' && !Array.isArray(value)
+          ? { ...(next[key] || {}), ...value }
+          : value;
+      });
+      return { ...current, style: next };
+    });
+  };
+
   const updateColor = (section, color) => {
     const normalized = normalizeHex(color);
-    updateStyle({ [section]: { color: normalized } });
+    applyStyleChange({ [section]: { color: normalized } });
   };
+
+  const hexToRgb = (hex) => {
+    const safe = normalizeHex(hex);
+    return [1, 3, 5].map((i) => parseInt(safe.slice(i, i + 2), 16));
+  };
+  const luminance = (hex) => hexToRgb(hex).map((v) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }).reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const contrastRatio = (a, b) => { const values = [luminance(a), luminance(b)].sort((x, y) => y - x); return (values[0] + 0.05) / (values[1] + 0.05); };
   const [PreviewClass, setPreviewClass] = useState(null);
 
   // Theme selection is a preview-only action. It does not touch the shared QR
   // settings until the user explicitly saves the theme.
   const previewStyle = themePreview.style;
   const previewThemeId = themePreview.id;
+  const contrast = contrastRatio(previewStyle.dotsOptions?.color || '#172033', previewStyle.backgroundOptions?.color || '#ffffff');
   const previewRef = useRef(null);
   const previewInstance = useRef(null);
 
@@ -114,7 +141,7 @@ const QRSettings = () => {
   };
 
   const handleLogoRemove = () => {
-    if (!logo) return;
+    if (!draftLogo) return;
     setShowDeleteLogoModal(true);
   };
 
@@ -134,104 +161,101 @@ const QRSettings = () => {
   // themePreview intentionally stores a snapshot for theme previews.
   const handleLogoSizeChange = (event) => {
     const imageSize = Number(event.target.value) / 100;
-    updateStyle({
-      imageOptions: { ...(qrStyle.imageOptions || {}), imageSize },
+    applyStyleChange({
+      imageOptions: { ...(previewStyle.imageOptions || {}), imageSize },
     });
-    setThemePreview((current) => ({
-      ...current,
-      style: {
-        ...current.style,
-        imageOptions: { ...(current.style.imageOptions || {}), imageSize },
-      },
-    }));
-  };
-
-  const saveTheme = () => {
-    updateStyle(themePreview.style);
-    selectTheme(THEMES.find((theme) => theme.id === themePreview.id) || { id: themePreview.id, style: themePreview.style });
-    toast.success('Theme saved');
   };
 
   const refreshThemePreview = () => {
     setThemePreview({ id: selectedTheme, style: qrStyle });
-    toast.success('Theme preview reset');
+    setDraftLogo(logo);
+    setLogoDirty(false);
+    toast.success('Preview restored to the current settings');
   };
 
   const save = () => {
+    selectTheme({ id: themePreview.id, style: themePreview.style });
+    updateStyle(themePreview.style);
     if (logoDirty) setLogo(draftLogo);
     saveGlobalSettings(draftLogo);
     setLogoDirty(false);
-    toast.success('QR settings saved globally');
+    toast.success('QR design settings saved');
+  };
+
+  const resetToDefaults = () => {
+    setDraftLogo(null);
+    setLogoDirty(true);
+    setThemePreview({ id: 'clean', style: { ...THEMES[0].style } });
+    toast.success('Default design loaded. Save Settings to apply it.');
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div><p className="eyebrow">Workspace settings</p><h1>QR Design Settings</h1><p>Choose a premium theme or fine-tune your QR style. Changes are shared across the QR builder.</p></div>
-        <div className="flex gap-2">
-          <button onClick={resetStyle} className="secondary-button"><RotateCcw size={14} /> Reset</button>
-          <button onClick={save} className="primary-button"><Save size={14} /> Save Settings</button>
+    <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="qr-settings-page max-w-6xl space-y-6">
+      <div className="qr-settings-heading">
+        <div className="min-w-0"><p className="eyebrow">Workspace settings</p><h1>QR Design Studio</h1><p>Build a branded QR code with reusable themes, precise styling, and a live preview.</p></div>
+        <div className="qr-settings-actions">
+          <span className="settings-unsaved"><span className="settings-status-dot" /> Editing design</span>
+          <button type="button" onClick={refreshThemePreview} className="secondary-button"><RotateCcw size={14} /> Undo changes</button>
+          <button type="button" onClick={resetToDefaults} className="secondary-button qr-reset-button">Reset defaults</button>
+          <button type="button" onClick={save} className="primary-button"><Save size={14} /> Save Settings</button>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_360px] gap-5 items-start">
+      <div className="qr-settings-layout grid lg:grid-cols-[minmax(0,1fr)_350px] gap-5 items-start">
         <div className="space-y-5">
-          <section className="simple-panel">
+          <section className="simple-panel settings-section settings-themes">
             <div className="panel-title">
-              <div><h2>Premium Design Themes</h2><p>Preview themes without changing your saved design</p></div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={refreshThemePreview} className="secondary-button text-xs py-2 px-3"><RefreshCw size={13} /> Undo</button>
-                <button type="button" onClick={saveTheme} className="primary-button text-xs py-2 px-3"><Save size={13} /> Save Theme</button>
-                <Crown size={17} className="text-link" />
-              </div>
+              <div className="settings-section-heading"><span className="settings-section-icon"><Sparkles size={17} /></span><div><h2>Design themes</h2><p>Start with a preset, then fine-tune every detail</p></div></div>
+              <span className="settings-count">{THEMES.length} presets</span>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               {THEMES.map((theme) => (
-                <button key={theme.id} type="button" onClick={() => handleThemePreview(theme)} className={`text-left rounded-xl border p-4 transition ${previewThemeId === theme.id ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                <button key={theme.id} type="button" onClick={() => handleThemePreview(theme)} className={`theme-choice text-left rounded-xl border p-3 transition ${previewThemeId === theme.id ? 'is-selected border-indigo-300 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
                   <div className="flex items-center justify-between"><strong className="text-sm text-slate-800">{theme.name}</strong>{previewThemeId === theme.id && <Check size={15} className="text-indigo-600" />}</div>
                   <p className="text-xs text-slate-500 mt-1">{theme.description}</p>
-                  <div className="mt-3 h-8 rounded-lg flex items-center justify-center" style={{ background: theme.style.backgroundOptions.color }}><span className="h-3/5 w-2/3 rounded" style={{ background: theme.style.dotsOptions.color }} /></div>
+                  <div className="theme-mini-preview mt-3 rounded-lg flex items-center justify-center" style={{ background: theme.style.backgroundOptions.color }} aria-hidden="true">
+                    <svg viewBox="0 0 88 58" width="88" height="58">
+                      {Array.from({ length: 9 }, (_, y) => Array.from({ length: 13 }, (_, x) => ((x * 7 + y * 5 + x * y) % 4 !== 0) && <rect key={`${x}-${y}`} x={7 + x * 5.8} y={4 + y * 5.6} width="3.5" height="3.5" rx={theme.style.dotsOptions.type.includes('round') || theme.style.dotsOptions.type === 'dots' ? 1.7 : 0} fill={theme.style.dotsOptions.color} />))}
+                      <rect x="4" y="2" width="19" height="19" rx="4" fill={theme.style.backgroundOptions.color} stroke={theme.style.cornersSquareOptions.color} strokeWidth="3.5"/><rect x="65" y="2" width="19" height="19" rx="4" fill={theme.style.backgroundOptions.color} stroke={theme.style.cornersSquareOptions.color} strokeWidth="3.5"/><rect x="4" y="37" width="19" height="19" rx="4" fill={theme.style.backgroundOptions.color} stroke={theme.style.cornersSquareOptions.color} strokeWidth="3.5"/>
+                    </svg>
+                  </div>
+                  <div className="theme-swatches"><i style={{ background: theme.style.dotsOptions.color }} /><i style={{ background: theme.style.backgroundOptions.color }} /><i style={{ background: theme.style.cornersSquareOptions.color }} /></div>
                 </button>
               ))}
             </div>
-            <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-              Theme changes are preview-only until you click <strong>Save Theme</strong>. Use <strong>Refresh</strong> to return to the saved theme.
-            </div>
+            <div className="settings-note"><Sparkles size={14} /><span>Preset changes are reflected in the preview. Click <strong>Save Settings</strong> to apply them across the QR builder.</span></div>
           </section>
 
-          <section className="simple-panel space-y-4"><div className="panel-title"><div><h2>Size & Margin</h2><p>Control output dimensions</p></div></div>
-            <div><label className="label">Size: {qrStyle.width}px</label><input type="range" min={150} max={600} step={10} value={qrStyle.width} onChange={(e) => updateStyle({ width: +e.target.value, height: +e.target.value })} className="w-full" /></div>
-            <div><label className="label">Margin: {qrStyle.margin}px</label><input type="range" min={0} max={50} step={2} value={qrStyle.margin} onChange={(e) => updateStyle({ margin: +e.target.value })} className="w-full" /></div>
+          <section className="simple-panel settings-section space-y-4"><div className="panel-title"><div className="settings-section-heading"><span className="settings-section-icon"><SlidersHorizontal size={17} /></span><div><h2>Size & spacing</h2><p>Control the exported QR dimensions</p></div></div></div>
+            <div className="settings-range-field"><div className="settings-range-label"><label className="label mb-0" htmlFor="qr-size-range">QR size</label><label className="settings-number-wrap"><input aria-label="QR size in pixels" type="number" min={150} max={1024} step={10} value={previewStyle.width} onChange={(e) => { const n = Math.max(150, Math.min(1024, Number(e.target.value) || 150)); applyStyleChange({ width: n, height: n }); }} /> <span>px</span></label></div><input id="qr-size-range" type="range" min={150} max={1024} step={10} value={previewStyle.width} onChange={(e) => applyStyleChange({ width: +e.target.value, height: +e.target.value })} className="w-full settings-range" /><div className="settings-range-ends"><span>150 px</span><span>1024 px</span></div></div>
+            <div className="settings-range-field"><div className="settings-range-label"><label className="label mb-0" htmlFor="qr-margin-range">Quiet zone / margin</label><label className="settings-number-wrap"><input aria-label="QR margin in pixels" type="number" min={0} max={50} step={1} value={previewStyle.margin ?? 0} onChange={(e) => applyStyleChange({ margin: Math.max(0, Math.min(50, Number(e.target.value) || 0)) })} /><span>px</span></label></div><input id="qr-margin-range" type="range" min={0} max={50} step={1} value={previewStyle.margin ?? 0} onChange={(e) => applyStyleChange({ margin: +e.target.value })} className="w-full settings-range" /><p className="settings-help">A clear border around the code helps scanners detect it reliably.</p></div>
           </section>
 
-          <section className="simple-panel space-y-4"><div className="panel-title"><div><h2>Colors</h2><p>Keep the code readable and brand-safe</p></div></div>
-            <ColorInput label="Dot Color" value={qrStyle.dotsOptions?.color} onChange={(c) => updateColor('dotsOptions', c)} />
-            <ColorInput label="Background" value={qrStyle.backgroundOptions?.color} onChange={(c) => updateColor('backgroundOptions', c)} />
-            <ColorInput label="Corner Square" value={qrStyle.cornersSquareOptions?.color} onChange={(c) => updateColor('cornersSquareOptions', c)} />
-            <ColorInput label="Corner Dot" value={qrStyle.cornersDotOptions?.color} onChange={(c) => updateColor('cornersDotOptions', c)} />
+          <section className="simple-panel settings-section space-y-4"><div className="panel-title"><div className="settings-section-heading"><span className="settings-section-icon"><Palette size={17} /></span><div><h2>Colors & contrast</h2><p>Match your brand while keeping your code scannable</p></div></div></div>
+            <ColorInput label="Dot Color" value={previewStyle.dotsOptions?.color} onChange={(c) => updateColor('dotsOptions', c)} />
+            <ColorInput label="Background" value={previewStyle.backgroundOptions?.color} onChange={(c) => updateColor('backgroundOptions', c)} />
+            <ColorInput label="Corner Square" value={previewStyle.cornersSquareOptions?.color} onChange={(c) => updateColor('cornersSquareOptions', c)} />
+            <ColorInput label="Corner Dot" value={previewStyle.cornersDotOptions?.color} onChange={(c) => updateColor('cornersDotOptions', c)} />
+            <div className={`settings-contrast ${contrast < 3 ? 'is-warning' : 'is-good'}`}><span className="settings-contrast-icon">{contrast < 3 ? <AlertTriangle size={15} /> : <Check size={15} />}</span><div><strong>{contrast < 3 ? 'Low color contrast' : 'Good color contrast'}</strong><p>{contrast.toFixed(1)}:1 contrast ratio. {contrast < 3 ? 'Choose a darker foreground or lighter background to improve scanning reliability.' : 'Your foreground and background have a useful contrast difference.'}</p></div></div>
           </section>
 
-          <section className="simple-panel space-y-4"><div className="panel-title"><div><h2>QR Shape</h2><p>Choose dot and corner styles</p></div></div>
-            <div className="grid grid-cols-3 gap-2">{DOT_TYPES.map(t => <button key={t} onClick={() => updateStyle({ dotsOptions: { ...qrStyle.dotsOptions, type: t } })} className={`secondary-button justify-center ${qrStyle.dotsOptions?.type === t ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : ''}`}>{t}</button>)}</div>
-            <div className="grid sm:grid-cols-2 gap-4"><div><label className="label">Corner square</label><div className="flex gap-2">{CORNER_SQUARE_TYPES.map(t => <button key={t} onClick={() => updateStyle({ cornersSquareOptions: { ...qrStyle.cornersSquareOptions, type: t } })} className={`secondary-button flex-1 justify-center ${qrStyle.cornersSquareOptions?.type === t ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : ''}`}>{t}</button>)}</div></div><div><label className="label">Corner dot</label><div className="flex gap-2">{CORNER_DOT_TYPES.map(t => <button key={t} onClick={() => updateStyle({ cornersDotOptions: { ...qrStyle.cornersDotOptions, type: t } })} className={`secondary-button flex-1 justify-center ${qrStyle.cornersDotOptions?.type === t ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : ''}`}>{t}</button>)}</div></div></div>
+          <section className="simple-panel settings-section space-y-4"><div className="panel-title"><div className="settings-section-heading"><span className="settings-section-icon"><ScanLine size={17} /></span><div><h2>QR shape</h2><p>Select the dot and finder-pattern style</p></div></div></div>
+            <label className="label">Dot style</label><div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{DOT_TYPES.map(t => <button type="button" key={t} onClick={() => applyStyleChange({ dotsOptions: { ...previewStyle.dotsOptions, type: t } })} className={`shape-choice ${previewStyle.dotsOptions?.type === t ? 'is-selected' : ''}`} aria-pressed={previewStyle.dotsOptions?.type === t}><span className={`shape-sample shape-${t}`} style={{ color: previewStyle.dotsOptions?.color || '#5146d8' }}><i /><i /><i /><i /></span><span>{t.replaceAll('-', ' ')}</span>{previewStyle.dotsOptions?.type === t && <Check size={14} />}</button>)}</div>
+            <div className="grid sm:grid-cols-2 gap-4"><div><label className="label">Corner square</label><div className="flex gap-2">{CORNER_SQUARE_TYPES.map(t => <button type="button" key={t} onClick={() => applyStyleChange({ cornersSquareOptions: { ...previewStyle.cornersSquareOptions, type: t } })} className={`shape-pill ${previewStyle.cornersSquareOptions?.type === t ? 'is-selected' : ''}`} aria-pressed={previewStyle.cornersSquareOptions?.type === t}>{t.replaceAll('-', ' ')}</button>)}</div></div><div><label className="label">Corner dot</label><div className="flex gap-2">{CORNER_DOT_TYPES.map(t => <button type="button" key={t} onClick={() => applyStyleChange({ cornersDotOptions: { ...previewStyle.cornersDotOptions, type: t } })} className={`shape-pill ${previewStyle.cornersDotOptions?.type === t ? 'is-selected' : ''}`} aria-pressed={previewStyle.cornersDotOptions?.type === t}>{t}</button>)}</div></div></div>
           </section>
 
-          <section className="simple-panel space-y-4"><div className="panel-title"><div><h2>Error Correction</h2><p>Higher levels improve recovery from damage</p></div></div><div className="grid grid-cols-4 gap-2">{ERROR_LEVELS.map(l => <button key={l} onClick={() => updateStyle({ errorCorrectionLevel: l })} className={`secondary-button justify-center ${qrStyle.errorCorrectionLevel === l ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : ''}`}>{l}</button>)}</div></section>
+          <section className="simple-panel settings-section space-y-4"><div className="panel-title"><div><h2>Error correction</h2><p>Higher levels recover more data when the code is damaged</p></div></div><div className="grid grid-cols-4 gap-2">{ERROR_LEVELS.map((level) => <button type="button" key={level} onClick={() => applyStyleChange({ errorCorrectionLevel: level })} aria-pressed={previewStyle.errorCorrectionLevel === level} className={`error-level-choice ${previewStyle.errorCorrectionLevel === level ? 'is-selected' : ''}`}><strong>{level}</strong><span>{({ L: '7%', M: '15%', Q: '25%', H: '30%' })[level]}</span></button>)}</div><p className="settings-help">If you use a center logo, Q or H is usually a better starting point. Always test-scan the final code.</p></section>
 
-          <section className="simple-panel space-y-4">
+          <section className="simple-panel settings-section space-y-4">
             <div className="panel-title">
-              <div>
-                <h2>Center Logo</h2>
-                <p>Optional brand mark for your QR codes</p>
-              </div>
+              <div className="settings-section-heading"><span className="settings-section-icon"><ImagePlus size={17} /></span><div><h2>Center logo</h2><p>Add a brand mark to the center of your QR code</p></div></div>
             </div>
 
-            <input
-              type="file"
-              accept="image/png,image/svg+xml,image/jpeg,image/webp"
-              onChange={handleLogoUpload}
-              className="block w-full text-sm text-slate-500"
-            />
+            <label className="logo-upload-zone">
+              <span className="logo-upload-icon"><ImagePlus size={20} /></span>
+              <span><strong>{draftLogo ? 'Replace logo image' : 'Choose a logo image'}</strong><small>PNG, JPG, WebP or SVG · optimized for QR use</small></span>
+              <input type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" onChange={handleLogoUpload} />
+            </label>
 
             {draftLogo && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
@@ -258,22 +282,16 @@ const QRSettings = () => {
 
             {draftLogo && (
               <div>
-                <label className="label">Logo size: {Math.round((qrStyle.imageOptions?.imageSize || .3) * 100)}%</label>
-                <input
-                  type="range"
-                  min={10}
-                  max={60}
-                  step={5}
-                  value={(qrStyle.imageOptions?.imageSize || .3) * 100}
-                  onChange={handleLogoSizeChange}
-                  className="w-full"
-                />
+                <div className="settings-range-label"><label className="label mb-0" htmlFor="logo-size-range">Logo size</label><strong className="settings-value-chip">{Math.round((previewStyle.imageOptions?.imageSize || .3) * 100)}%</strong></div>
+                <input id="logo-size-range" type="range" min={10} max={40} step={5} value={(previewStyle.imageOptions?.imageSize || .3) * 100} onChange={handleLogoSizeChange} className="w-full settings-range" />
+                <p className="settings-help">Keep the logo compact to protect QR readability. Test-scan after changing its size.</p>
+                {Math.round((previewStyle.imageOptions?.imageSize || .3) * 100) > 30 && <p className="settings-warning"><AlertTriangle size={13} /> Larger logos can reduce scanning reliability.</p>}
               </div>
             )}
           </section>
         </div>
 
-        <section className="simple-panel lg:sticky lg:top-24"><div className="panel-title"><div><h2>Live Preview</h2><p>Updates as you change settings</p></div><span className="text-xs text-emerald-600 font-semibold">Live</span></div><div className="qr-preview-viewport min-h-[360px] rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center p-8 overflow-hidden"><div ref={previewRef} className="qr-preview-content max-w-full max-h-full flex items-center justify-center overflow-hidden" /></div><div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200"><p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Preview data</p><p className="text-xs text-slate-600 font-mono mt-1 truncate">https://lumalink.app/demo</p></div></section>
+        <section className="simple-panel qr-settings-preview lg:sticky lg:top-24"><div className="panel-title"><div><div className="settings-section-heading"><span className="settings-section-icon"><ScanLine size={17} /></span><div><h2>Live preview</h2><p>Updates as you customize</p></div></div></div><span className="preview-live-pill"><span /> Live</span></div><div className="qr-preview-viewport min-h-[320px] rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center p-6 overflow-hidden"><div ref={previewRef} className="qr-preview-content max-w-full max-h-full flex items-center justify-center overflow-hidden" /></div><div className="preview-meta-row"><span>OUTPUT SIZE</span><strong>{previewStyle.width || 250} × {previewStyle.height || previewStyle.width || 250}px</strong></div><div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200"><p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Preview destination</p><p className="text-xs text-slate-600 font-mono mt-1 truncate">https://lumalink.app/demo</p></div><div className="preview-download-note"><Download size={14} /><span>Save settings, then export your QR from the builder.</span></div></section>
       </div>
 
       {showDeleteLogoModal && (
