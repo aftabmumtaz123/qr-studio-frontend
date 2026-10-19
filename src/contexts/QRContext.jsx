@@ -28,6 +28,25 @@ const defaultCardData = {
 };
 
 const SETTINGS_KEY = 'lumalink_qr_settings_v1';
+const CARD_SETTINGS_KEY = 'lumalink_card_settings_v1';
+
+const readSavedCardSettings = () => {
+  try {
+    const saved = localStorage.getItem(CARD_SETTINGS_KEY);
+    const parsed = saved ? (JSON.parse(saved) || {}) : {};
+    const cardStyle = { ...(parsed.cardStyle || {}) };
+    // Only durable image sources can survive a reload. Expired blob: URLs, file://
+    // paths, fake local paths, and relative URLs caused ERR_FILE_NOT_FOUND on export.
+    const sanitizeImage = (value) => typeof value === 'string' &&
+      (value.startsWith('data:image/') || value.startsWith('https://') || value.startsWith('http://'))
+      ? value : '';
+    cardStyle.avatar = sanitizeImage(cardStyle.avatar);
+    cardStyle.brandLogo = sanitizeImage(cardStyle.brandLogo);
+    return { ...parsed, cardStyle };
+  } catch {
+    return {};
+  }
+};
 
 const readSavedSettings = () => {
   try {
@@ -43,15 +62,16 @@ const QRContext = createContext(null);
 
 export const QRProvider = ({ children }) => {
   const saved = readSavedSettings();
+  const savedCard = readSavedCardSettings();
   const [activeType, setActiveType] = useState('URL');
   const [qrData, setQrData] = useState('https://example.com');
   const [qrStyle, setQrStyle] = useState({ ...defaultStyle, ...(saved.qrStyle || {}) });
   const [logo, setLogo] = useState(saved.logo || null);
   const [qrRef, setQrRef] = useState(null);
   const [selectedTheme, setSelectedTheme] = useState(saved.selectedTheme || 'clean');
-  const [cardTemplate, setCardTemplate] = useState('modern');
-  const [cardStyle, setCardStyle] = useState(defaultCardStyle);
-  const [cardData, setCardData] = useState(defaultCardData);
+  const [cardTemplate, setCardTemplate] = useState(savedCard.cardTemplate || 'modern');
+  const [cardStyle, setCardStyle] = useState({ ...defaultCardStyle, ...(savedCard.cardStyle || {}) });
+  const [cardData, setCardData] = useState({ ...defaultCardData, ...(savedCard.cardData || {}) });
   const [exportQuality, setExportQuality] = useState('2048p');
 
   const persistSettings = useCallback((nextStyle, nextTheme = selectedTheme, nextLogo = logo) => {
@@ -72,6 +92,29 @@ export const QRProvider = ({ children }) => {
   useEffect(() => {
     persistSettings(qrStyle, selectedTheme, logo);
   }, [qrStyle, selectedTheme, logo, persistSettings]);
+
+  // Keep contact-card edits available when the user switches QR types or
+  // refreshes the page. Never persist temporary blob: URLs because they expire.
+  useEffect(() => {
+    const isPersistableImage = (value) => typeof value === 'string' &&
+      (value.startsWith('data:image/') || value.startsWith('https://') || value.startsWith('http://'));
+    const safeCardStyle = {
+      ...cardStyle,
+      avatar: isPersistableImage(cardStyle.avatar) ? cardStyle.avatar : '',
+      brandLogo: isPersistableImage(cardStyle.brandLogo) ? cardStyle.brandLogo : '',
+    };
+    try {
+      localStorage.setItem(CARD_SETTINGS_KEY, JSON.stringify({
+        cardTemplate,
+        cardStyle: safeCardStyle,
+        cardData,
+      }));
+    } catch (error) {
+      // The vCard photo is resized before saving, but private browsing or a full
+      // storage quota can still prevent persistence. Keep the current session usable.
+      console.warn('Unable to persist contact-card settings:', error);
+    }
+  }, [cardTemplate, cardStyle, cardData]);
 
   // Update only when the requested value is actually different. This is
   // important for controlled color/style inputs because some UI components can

@@ -5,6 +5,22 @@ import { useEffect, useState } from 'react';
 import { useQR } from '../../contexts/QRContext';
 import FormWrapper from '../../components/FormWrapper';
 
+const VCARD_DRAFT_KEY = 'lumalink_vcard_draft_v1';
+const defaultVCardValues = {
+  firstName: 'John', lastName: 'Doe', phone: '+1234567890', email: 'john@example.com',
+  website: 'https://example.com', company: 'Acme Inc.', title: 'CEO & Founder',
+  address: '123 Tech Blvd', notes: '',
+};
+
+const readVCardDraft = () => {
+  try {
+    const saved = localStorage.getItem(VCARD_DRAFT_KEY);
+    return { ...defaultVCardValues, ...(saved ? JSON.parse(saved) : {}) };
+  } catch {
+    return defaultVCardValues;
+  }
+};
+
 const schema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().optional(),
@@ -20,30 +36,66 @@ const schema = z.object({
 const VCardForm = () => {
   const { updateQRData, updateCardData, updateCardStyle, cardStyle, setActiveType } = useQR();
   const [avatarPreview, setAvatarPreview] = useState(cardStyle.avatar || '');
-  const { register, watch, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
+  const { register, watch, formState: { errors } } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: readVCardDraft(),
+  });
   const values = watch();
 
   useEffect(() => {
     setAvatarPreview(cardStyle.avatar || '');
   }, [cardStyle.avatar]);
 
+  // Convert the uploaded photo to a compact data URL. Unlike URL.createObjectURL,
+  // a data URL survives navigation and refresh and can be captured by card exports.
   const handleAvatarChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) return;
+    if (!file.type.startsWith('image/')) {
+      event.target.value = '';
+      window.alert('Please choose an image file (JPG, PNG, or WebP).');
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       event.target.value = '';
       window.alert('Please choose an image smaller than 5 MB.');
       return;
     }
-    const imageUrl = URL.createObjectURL(file);
-    updateCardStyle({ avatar: imageUrl });
-    setAvatarPreview(imageUrl);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const maxDimension = 512;
+        const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const context = canvas.getContext('2d');
+        if (!context) return;
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.82);
+        updateCardStyle({ avatar: imageData });
+        setAvatarPreview(imageData);
+      };
+      image.onerror = () => window.alert('This image could not be opened. Please choose another image.');
+      image.src = String(reader.result || '');
+    };
+    reader.onerror = () => window.alert('Could not read the selected image. Please try again.');
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
     setActiveType('VCARD');
   }, [setActiveType]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VCARD_DRAFT_KEY, JSON.stringify({ ...defaultVCardValues, ...values }));
+    } catch (error) {
+      console.warn('Unable to save vCard draft:', error);
+    }
+  }, [JSON.stringify(values)]);
 
   useEffect(() => {
     const { firstName, lastName, phone, email, website, company, title, address, notes } = values;

@@ -16,6 +16,74 @@ const QUALITY_SCALES = {
 /**
  * Trigger browser file download from Blob or DataURL
  */
+
+/**
+ * Wait for card images before DOM capture. Old drafts can contain expired blob/file
+ * URLs; replace only failed images for the duration of export so html-to-image
+ * does not abort the entire download. Valid data-URL profile photos are preserved.
+ */
+const withExportReadyImages = async (element, capture) => {
+  const images = Array.from(element.querySelectorAll('img'));
+  const transparentFallback =
+    'data:image/svg+xml;charset=utf-8,' +
+    encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#e2e8f0"/><circle cx="32" cy="23" r="11" fill="#64748b"/><path d="M12 56c1-12 9-18 20-18s19 6 20 18" fill="#64748b"/></svg>');
+
+  await Promise.all(images.map(async (img) => {
+    const src = img.getAttribute('src') || '';
+    if (!src) return;
+    if (img.complete && img.naturalWidth > 0) return;
+
+    // file:// paths, relative filesystem paths, and expired blob URLs cannot be
+    // embedded reliably by html-to-image. Replace them before capture instead
+    // of letting one broken avatar/logo abort the card and ZIP exports.
+    const isPortableImage = src.startsWith('data:image/') || src.startsWith('https://') || src.startsWith('http://');
+    if (!isPortableImage) {
+      img.removeAttribute('srcset');
+      img.setAttribute('src', transparentFallback);
+      await new Promise((resolve) => {
+        if (img.complete && img.naturalWidth > 0) return resolve();
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+      return;
+    }
+
+    // Give in-flight data/HTTP images a chance to finish loading.
+    const loaded = await new Promise((resolve) => {
+      let settled = false;
+      const finish = (ok) => {
+        if (settled) return;
+        settled = true;
+        img.removeEventListener('load', onLoad);
+        img.removeEventListener('error', onError);
+        clearTimeout(timer);
+        resolve(ok);
+      };
+      const onLoad = () => finish(img.naturalWidth > 0);
+      const onError = () => finish(false);
+      const timer = setTimeout(() => finish(img.complete && img.naturalWidth > 0), 2500);
+      img.addEventListener('load', onLoad, { once: true });
+      img.addEventListener('error', onError, { once: true });
+      if (img.complete) finish(img.naturalWidth > 0);
+    });
+
+    if (!loaded) {
+      img.removeAttribute('srcset');
+      img.setAttribute('src', transparentFallback);
+      // Ensure the replacement itself is decoded before the DOM is cloned.
+      await new Promise((resolve) => {
+        if (img.complete && img.naturalWidth > 0) return resolve();
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    }
+  }));
+
+  // Leave the fallback in place for any broken image. Restoring an expired
+  // file/blob URL here retriggers ERR_FILE_NOT_FOUND immediately after export.
+  return capture();
+};
+
 const triggerDownload = (dataUrlOrBlob, fileName) => {
   const link = document.createElement('a');
   if (typeof dataUrlOrBlob === 'string') {
@@ -66,16 +134,16 @@ export const downloadCardImage = async (cardElement, format = 'png', qualityKey 
     };
 
     if (format === 'png') {
-      const dataUrl = await toPng(cardElement, options);
+      const dataUrl = await withExportReadyImages(cardElement, () => toPng(cardElement, options));
       triggerDownload(dataUrl, `contact-card-${qualityKey}.png`);
     } else if (format === 'jpg' || format === 'jpeg') {
-      const dataUrl = await toJpeg(cardElement, { ...options, quality: 0.95 });
+      const dataUrl = await withExportReadyImages(cardElement, () => toJpeg(cardElement, { ...options, quality: 0.95 }));
       triggerDownload(dataUrl, `contact-card-${qualityKey}.jpg`);
     } else if (format === 'svg') {
-      const dataUrl = await toSvg(cardElement, options);
+      const dataUrl = await withExportReadyImages(cardElement, () => toSvg(cardElement, options));
       triggerDownload(dataUrl, `contact-card.svg`);
     } else if (format === 'pdf') {
-      const dataUrl = await toPng(cardElement, { pixelRatio: 3, cacheBust: true });
+      const dataUrl = await withExportReadyImages(cardElement, () => toPng(cardElement, { pixelRatio: 3, cacheBust: true }));
       const img = new Image();
       img.src = dataUrl;
 
@@ -114,7 +182,7 @@ export const downloadBothAsZip = async (qrCodeRef, cardElement, qualityKey = '20
     const scale = QUALITY_SCALES[qualityKey] || 2.5;
 
     // 1. Capture Card PNG
-    const cardDataUrl = await toPng(cardElement, { pixelRatio: scale, cacheBust: true });
+    const cardDataUrl = await withExportReadyImages(cardElement, () => toPng(cardElement, { pixelRatio: scale, cacheBust: true }));
     const cardBase64 = cardDataUrl.replace(/^data:image\/(png|jpg);base64,/, '');
     zip.file('contact-card.png', cardBase64, { base64: true });
 
