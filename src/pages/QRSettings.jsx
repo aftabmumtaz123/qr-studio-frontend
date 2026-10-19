@@ -297,8 +297,8 @@ const QRSettings = () => {
             <h2 id="delete-logo-title" className="text-center text-lg font-semibold text-slate-900">Remove center logo?</h2>
             <p id="delete-logo-description" className="mt-2 text-center text-sm leading-6 text-slate-600">Are you sure you want to remove this logo? It will be removed from the QR preview and saved logo settings.</p>
             <div className="mt-6 flex justify-center gap-3">
-              <button type="button" onClick={() => setShowDeleteLogoModal(false)} className="secondary-button justify-center">Cancel</button>
-              <button type="button" onClick={confirmLogoRemove} className="primary-button justify-center !bg-red-600 hover:!bg-red-700">Delete Logo</button>
+              <button type="button" onClick={() => setShowDeleteLogoModal(false)} className="secondary-button inline-flex h-11 w-28 items-center justify-center !px-0 !py-0">Cancel</button>
+              <button type="button" onClick={confirmLogoRemove} className="primary-button inline-flex h-11 w-28 items-center justify-center !px-0 !py-0 !bg-red-600 hover:!bg-red-700">Delete Logo</button>
             </div>
           </motion.div>
         </div>
